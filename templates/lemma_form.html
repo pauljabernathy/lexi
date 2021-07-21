@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block head %}
+{% endblock %}
+
+{% block body %}
+<h3>The Lemma pages</h3>
+
+<form action="lemma" method="GET">
+    lemma:  <input type="text" name="lemma" id="lemma">
+    filters:
+    <table>
+        <tr><td><input type="text" name="filter_1_name"></td>
+            <td><input type="text" name="filter_1_value"></td></tr>
+        <tr><td><input type="text" name="filter_2_name"></td>
+            <td><input type="text" name="filter_2_value"></td></tr>
+    </table>
+
+    <input type="submit" value="Search">
+</form>
+
+<textarea id="sentences" cols="200" rows="50">
+    {{sentences}}
+
+</textarea>
+{% endblock %}
