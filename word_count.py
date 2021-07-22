@@ -5,9 +5,9 @@ import pickle
 
 # TODO:  Don't instantiate the NLP objects here.  The calling code should do that.
 #es = spacy.load('es_core_news_md')
-es = spacy.load('es_core_news_lg')
-es.max_length = 2260721
-es.max_length = 100000000
+#es = spacy.load('es_core_news_lg')
+#es.max_length = 2260721
+#es.max_length = 100000000
 
 WORD = 'word'
 COUNT = 'count'
@@ -17,7 +17,7 @@ DATA_COLUMNS = {COUNT: 0, POS: 1, SENTENCES: 2}
 
 DEFAULT_MAX_EXAMPLES = 20
 
-def get_counts_one_file(file_name, max=2000):
+def get_counts_one_file(file_name, nlp, max=2000):
     with open(file_name, encoding='utf-8') as f:
         text_as_list = f.readlines()
 
@@ -27,7 +27,7 @@ def get_counts_one_file(file_name, max=2000):
         max = len(text_as_list)
 
     for i in range(460, max):
-        doc = es(text_as_list[i].lower())
+        doc = nlp(text_as_list[i].lower())
         for token in doc:
             word = clean_word(token.lemma_)
             if token.is_punct or word.isspace() or word.isnumeric():
@@ -39,7 +39,7 @@ def get_counts_one_file(file_name, max=2000):
 
     result = pd.DataFrame(data={'lemma':list(counts.keys()), 'count': list(counts.values())})
     result.sort_values('count', ascending=False, inplace=True)
-    result['pos'] = result['lemma'].apply(lambda lemma: es(lemma)[0].pos_)
+    result['pos'] = result['lemma'].apply(lambda lemma: nlp(lemma)[0].pos_)
     return result
 
 
@@ -48,41 +48,11 @@ def clean_word(word):
     return word
 
 
-def get_counts(file_names:list, max=2000):
+def get_counts(file_names:list, nlp, max=2000):
     result = pd.DataFrame(columns=['lemma', 'count'])
     for file_name in file_names:
-        result = result.append(get_counts_one_file(file_name, max))
+        result = result.append(get_counts_one_file(file_name, nlp, max))
     return result
-
-
-def create_lemma_map_from_doc_old(doc):
-    results = {}
-    sentence_number = 0
-    for sentence in doc.sents:
-        for token in sentence:
-            word = token.text
-            if word == 'quieren':
-                print(word, token.lemma_, token.pos_)
-            lemma = token.lemma_
-            if token.pos_ not in ['VERB', 'NOUN']:
-                continue
-            if lemma in results:
-                #results[lemma].add(sentence_number)
-                results[lemma][DATA_COLUMNS[COUNT]] += 1
-                results[lemma][DATA_COLUMNS[POS]] = token.pos_
-                results[lemma][DATA_COLUMNS[SENTENCES]].add(sentence_number)
-            else:
-                #results[lemma] = set()
-                #results[lemma].add(sentence_number)
-
-                results[lemma] = [1, token.pos_, {sentence_number}]  # The order is hardcoded here
-
-                #results[lemma][DATA_COLUMNS[COUNT]] += 1
-                #results[lemma][DATA_COLUMNS[POS]] = token.pos_
-                #results[lemma][DATA_COLUMNS[SENTENCES]].add(sentence_number)
-            # print(lemma, sentence_number)
-        sentence_number += 1
-    return results
 
 
 def create_lemma_map_from_doc(doc):
@@ -143,7 +113,7 @@ def create_lemma_map_from_sentences(sentences):
     return df
 
 
-def create_lemma_map_from_file(file_names, pos_list=['VERB', 'NOUN', 'ADJ', 'ADV'], encoding='utf-8'):
+def create_lemma_map_from_file(file_names, nlp, pos_list=['VERB', 'NOUN', 'ADJ', 'ADV'], encoding='utf-8'):
     start_time = time()
     #print(start_time)
     #encoding = 'utf-8'
@@ -161,8 +131,7 @@ def create_lemma_map_from_file(file_names, pos_list=['VERB', 'NOUN', 'ADJ', 'ADV
                 text = text + f.read()
 
 
-    #doc = es(text.lower())
-    doc = es(text)
+    doc = nlp(text)
     doc_created_time = time()
     print(str(doc_created_time - start_time), ' seconds to create the spacy document object')
     serialize(doc, "doc_backup.pkl")

@@ -1,7 +1,6 @@
 import unittest
 import spacy
 import pickle
-from word_count import es
 import lemma_utils as lu
 import time
 import word_count as wc
@@ -9,18 +8,21 @@ import word_count as wc
 
 class MyTestCase(unittest.TestCase):
 
+    def setUp(self):
+        self.es = spacy.load('es_core_news_lg')
+
     def test_spacy_doc_similarity(self):
-        doc1 = es('Él come tacos.')
+        doc1 = self.es('Él come tacos.')
         lu.show_info(doc1)
-        doc2 = es('Nosotros comemos tacos.')
+        doc2 = self.es('Nosotros comemos tacos.')
         lu.show_info(doc2)
         '''similarity12 = doc1.similarity(doc2)
         similarity21 = doc2.similarity(doc1)
         print(similarity12)
         print(similarity21)'''
-        doc3 = es('Ellos comen tacos.')
+        doc3 = self.es('Ellos comen tacos.')
         lu.show_info(doc3)
-        doc4 = es('Ellas comen tacos.')
+        doc4 = self.es('Ellas comen tacos.')
         lu.show_info(doc4)
         docs = [doc1, doc2, doc3, doc4]
         for i in range(len(docs)):
@@ -341,6 +343,7 @@ class CompareMapAndAdHoc(unittest.TestCase):
         # self.en = spacy.load('en_core_web_lg')
         self.es = spacy.load('es_core_news_lg')
 
+    # TODO:  Fix this test failure for hablar.
     def test_compare_results_for_fyj(self):
         with open('fyj/fyj.pkl', 'rb') as f:
             fyj = pickle.load(f)
@@ -382,8 +385,8 @@ class CompareMapAndAdHoc(unittest.TestCase):
         sentence1 = '--¿Qué le digo?... Porque aunque no le he hablado nunca, le hablaré, si usted me lo manda.'
         sentence2 = 'Creyó ver a Segunda y oírla hablar con Encarnación; pero hablaban a la carrera, como seres endemoniados, pasando y perdiéndose en un término vago que caía hacia la mano derecha.'
 
-        doc1 = es(sentence1)
-        doc2 = es(sentence2)
+        doc1 = self.es(sentence1)
+        doc2 = self.es(sentence2)
         s1 = list(doc1.sents)
         s2 = list(doc2.sents)
         lm_1 = wc.create_lemma_map_from_sentences(s1)
