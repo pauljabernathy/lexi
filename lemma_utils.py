@@ -2,8 +2,8 @@ import spacy
 DEFAULT_MAX_EXAMPLES = 20
 ALL_LEMMA_VALUES = [None, '']
 
+
 def show_examples(sentences, lemma_map, lemma, max_examples=DEFAULT_MAX_EXAMPLES):
-    #sentences = [x for x in doc.sents]  # TODO: If performance becomes and issue, pass in sentences instead of doc.
     for s in list(lemma_map[lemma_map.word == lemma].iloc[0].sentences)[:max_examples]:
         print('\n___\n', sentences[s])
 
@@ -61,14 +61,11 @@ def show_info(doc):
     for token in doc:
         #print(
         #    f'{token.text:{12}} {token.pos_:{6}} {token.tag_:{6}} "lemma:"  {token.lemma_:{20}}    {spacy.explain(token.tag_)}')
-        ancestors = [a for a in token.ancestors]
+        '''ancestors = [a for a in token.ancestors]
         token.morph.__repr__()
         m = token.morph
-        parent = ancestors[0] if (ancestors is not None and len(ancestors) > 0) else '?'
+        parent = ancestors[0] if (ancestors is not None and len(ancestors) > 0) else '?' '''
         # assert token.head == parent
-        if token.pos_ is not "VERB":
-            # continue
-            pass
         print(token.text, token.pos_, token.dep_, token.morph.to_dict(),  # token.head.text,  # token.head.pos_,
               # [child for child in token.children]
               )
@@ -83,19 +80,6 @@ def search_doc_for_examples(doc, lemma, morphology_attributes):
     :return:
     """
     sentences = list(doc.sents)
-    '''result = []
-    for sentence in sentences:
-        for token in sentence:
-            if token.lemma_ == lemma:
-                if morphology_attributes is None:
-                    result.append(str(sentence).strip(" ").replace('\n', ''))
-                    break
-                for attr in morphology_attributes:
-                    token_attrs = token.morph.to_dict()
-                    if attr in token_attrs and morphology_attributes[attr] == token_attrs[attr]:
-                        result.append(str(sentence).strip(" "))
-                        break
-    return result'''
     return find_examples_in_sentences(sentences, lemma, morphology_attributes)
 
 
