@@ -30,7 +30,9 @@ def get_sentences(request):
     for k in args.keys():
         if 'name' in k and k.replace('name', 'value') in args.keys() and args[k] is not None and args[k] != '':
             filters[args[k]] = args[k.replace('name', 'value')]
-    sentences = lu.search_sentences_for_examples(cp.fyj_sentences, cp.fyj_lm, lemma_searching_for, filters)
+    # sentences = lu.search_sentences_for_examples(cp.fyj_sentences, cp.fyj_lm, lemma_searching_for, filters)
+    # using lu.get_examples for the time being to avoid using the huge spacy files; functionality will be reduced
+    sentences = lu.get_examples(cp.fyj_sentences, cp.fyj_lm, lemma_searching_for)
     output = ''
     for i in range(len(sentences)):
         output += str(i) + '. ' + sentences[i] + '\n\n'
