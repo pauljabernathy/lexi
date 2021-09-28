@@ -40,10 +40,10 @@ class ShowExamplesTest(unittest.TestCase):
         self.es = spacy.load('es_core_news_lg')
 
     def test_get_example_real_file(self):
-        with open("fyj/fyj_sentences.pkl", 'rb') as f:
+        with open("../fyj/fyj_sentences.pkl", 'rb') as f:
             sentences = pickle.load(f)
 
-        with open("fyj/fyj_lemma_map.pkl", 'rb') as f:
+        with open("../fyj/fyj_lemma_map.pkl", 'rb') as f:
             fyj_lm = pickle.load(f)
 
         examples = lu.get_examples(sentences, fyj_lm, 'alejar', 20)
@@ -97,7 +97,7 @@ class ShowInfoTest(unittest.TestCase):
 
     def test_show_info_for_sentence_obj_not_doc(self):
         #doc, lemma_map = wc.create_lemma_map_from_file("dona_perfecta.txt")
-        with open('fyj/fyj.pkl', 'rb') as f:
+        with open('../fyj/fyj.pkl', 'rb') as f:
             fyj = pickle.load(f)
         sents = [s for s in fyj.sents]
         sents2 = list(fyj.sents)
@@ -119,7 +119,7 @@ class SearchForExamplesTest(unittest.TestCase):
         self.assertEqual(['Que tengas buen día.', 'Espero que tenga mucho dinero.'], examples)
 
     def test_search_doc_for_examples_file(self):
-        with open('fyj/fyj.pkl', 'rb') as f:
+        with open('../fyj/fyj.pkl', 'rb') as f:
             fyj = pickle.load(f)
 
         alejar_fin = lu.search_doc_for_examples(fyj, 'alejar', {'VerbForm': 'Fin'})
@@ -242,10 +242,10 @@ class SearchForExamplesTest(unittest.TestCase):
     def test_search_sentences_for_examples_real_file(self):
         #with open("fyj/fyj_sentences.pkl", 'rb') as f:
         #    sentences = pickle.load(f)
-        with open("fyj/fyj_lemma_map.pkl", 'rb') as f:
+        with open("../fyj/fyj_lemma_map.pkl", 'rb') as f:
             fyj_lm = pickle.load(f)
 
-        with open('fyj/fyj.pkl', 'rb') as f:
+        with open('../fyj/fyj.pkl', 'rb') as f:
             fyj = pickle.load(f)
 
         sentences = list(fyj.sents)
@@ -345,17 +345,17 @@ class CompareMapAndAdHoc(unittest.TestCase):
 
     # TODO:  Fix this test failure for hablar.
     def test_compare_results_for_fyj(self):
-        with open('fyj/fyj.pkl', 'rb') as f:
+        with open('../fyj/fyj.pkl', 'rb') as f:
             fyj = pickle.load(f)
         ad_hoc_examples = lu.search_doc_for_examples(fyj, 'alejar', None)
         #ad_hoc_examples = lu.search_doc_for_examples(fyj, 'resolver', None)
         print('ad hoc')
         print(ad_hoc_examples)
 
-        with open("fyj/fyj_sentences.pkl", 'rb') as f:
+        with open("../fyj/fyj_sentences.pkl", 'rb') as f:
             sentences = pickle.load(f)
 
-        with open("fyj/fyj_lemma_map.pkl", 'rb') as f:
+        with open("../fyj/fyj_lemma_map.pkl", 'rb') as f:
             fyj_lm = pickle.load(f)
 
         map_examples = lu.get_examples(sentences, fyj_lm, 'alejar', 2000)
@@ -402,12 +402,12 @@ class CompareMapAndAdHoc(unittest.TestCase):
     # TODO:  Move somewhere else because this isn't really a unit test.
     @unittest.skip("Only do this ad hoc because of how long it takes.")
     def test_compare_time_fyj(self):
-        with open('fyj/fyj.pkl', 'rb') as f:
+        with open('../fyj/fyj.pkl', 'rb') as f:
             fyj = pickle.load(f)
 
-        with open("fyj/fyj_sentences.pkl", 'rb') as f:
+        with open("../fyj/fyj_sentences.pkl", 'rb') as f:
             sentences = pickle.load(f)
-        with open("fyj/fyj_lemma_map.pkl", 'rb') as f:
+        with open("../fyj/fyj_lemma_map.pkl", 'rb') as f:
             fyj_lm = pickle.load(f)
 
         print('a list of words')
