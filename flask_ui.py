@@ -33,6 +33,7 @@ def get_sentences(request):
     # sentences = lu.search_sentences_for_examples(cp.fyj_sentences, cp.fyj_lm, lemma_searching_for, filters)
     # using lu.get_examples for the time being to avoid using the huge spacy files; functionality will be reduced
     sentences = lu.get_examples(cp.fyj_sentences, cp.fyj_lm, lemma_searching_for)
+    #sentences = lu.get_examples(cp.moby_sentences, cp.moby_lm, lemma_searching_for)
     output = ''
     for i in range(len(sentences)):
         output += str(i) + '. ' + sentences[i] + '\n\n'
