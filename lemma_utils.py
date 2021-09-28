@@ -1,4 +1,5 @@
 import spacy
+import pandas as pd
 DEFAULT_MAX_EXAMPLES = 20
 ALL_LEMMA_VALUES = [None, '']
 
@@ -58,6 +59,7 @@ def show_examples_2(sentences, lemma_map, lemma, max_index=20):
 
 
 def show_info(doc):
+    print()
     for token in doc:
         #print(
         #    f'{token.text:{12}} {token.pos_:{6}} {token.tag_:{6}} "lemma:"  {token.lemma_:{20}}    {spacy.explain(token.tag_)}')
@@ -66,9 +68,21 @@ def show_info(doc):
         m = token.morph
         parent = ancestors[0] if (ancestors is not None and len(ancestors) > 0) else '?' '''
         # assert token.head == parent
-        print(token.text, token.pos_, token.dep_, token.morph.to_dict(),  # token.head.text,  # token.head.pos_,
+        '''print(token.text, token.pos_, token.dep_, token.morph.to_dict(),  # token.head.text,  # token.head.pos_,
               # [child for child in token.children]
-              )
+              token.lemma_
+              )'''
+        pass
+
+    print()
+    texts = [getattr(t, 'text', None) for t in doc]
+    lemmas = [t.lemma_ for t in doc] if hasattr(doc[0], 'lemma_') else None
+    pos = [getattr(t, 'pos_', None) for t in doc] if hasattr(doc[0], 'pos_') else None
+    dep = [getattr(t, 'dep_', None) for t in doc]
+    morph_dict = [t.morph.to_dict() for t in doc] if hasattr(doc[0], 'morph') else None
+    head = [t.head.text for t in doc] if hasattr(doc[0], 'head') else None
+    df = pd.DataFrame({'text': texts, 'lemma': lemmas, 'pos': pos, 'dep': dep, 'morph': morph_dict, 'head': head})
+    print(df)
 
 
 def search_doc_for_examples(doc, lemma, morphology_attributes):

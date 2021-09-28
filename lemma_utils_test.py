@@ -440,6 +440,106 @@ class CompareMapAndAdHoc(unittest.TestCase):
         print(ad_hoc_time_taken > map_time_taken)
 
 
+class Experiments(unittest.TestCase):
+
+    def setUp(self):
+        # self.en = spacy.load('en_core_web_lg')
+        self.es = spacy.load('es_core_news_md')
+        self.en = spacy.load('en_core_web_md')
+        import pandas as pd
+        pd.set_option('display.max_rows', 500)
+        pd.set_option('display.max_columns', 500)  # needed so it doesn't show ... for POS column
+        pd.set_option('display.width', 10000)
+
+    def test_pipeline_excludes(self):
+        frase = 'Que tengas buen dia.'
+        d0 = self.es(frase)
+        lu.show_info(d0)
+
+        # The spanish pipelines do not come with a tagger, so excluding tagger shouldn't matter
+        d1 = [d for d in self.es.pipe([frase], disable=["tagger", "parser", "attribute_ruler", "lemmatizer"])][0]
+        lu.show_info(d1)
+        d2 = [d for d in self.es.pipe([frase], disable=["parser", "attribute_ruler", "lemmatizer"])][0]
+        lu.show_info(d2)
+        # self.assertEqual(d1, d2)
+        d3 = [d for d in self.es.pipe([frase], disable=["parser", "attribute_ruler"])][0]
+        lu.show_info(d3)
+
+        d4 = [d for d in self.es.pipe([frase], disable=["attribute_ruler"])][0]
+        lu.show_info(d4)
+
+        # pos is present in all of the above.  Where does it come from?
+
+        d5 = [d for d in self.es.pipe([frase], disable=["morphologizer"]) ] [0]
+        # morph is missing, as expected, as is pos
+        # => pos comes from the morphologizer step
+
+        lu.show_info(d5)
+
+        '''
+        parser -> token.dep_   parser is "Dependency Parser"  https://spacy.io/api/dependencyparser
+            What does the dependency parser actually do? 
+        tagger -> not relevant for Spanish
+        attribute_ruler -> ?  Doesn't seem to be something I am interested in right now.
+        morphologizer -> morph dict and pos_
+        '''
+        bp = 'breakpoint'
+
+    def test_pipeline_excludes_english(self):
+        phrase = 'Have a nice day.'
+        en0 = self.en(phrase)
+        lu.show_info(en0)
+
+        # The English pipelines do not have a morphologizer.  https://spacy.io/models/en
+        # But it has the information like {'Definite': 'Ind', 'PronType': 'Art'} that comes from token.morph.to_dict(
+        # ).  How?  Seems to come from the tagger.
+        # Spanish: morph comes from the morphologizer step; contains no tagger step.
+        # English: morph comes from the tagger step
+        en1 = [d for d in self.en.pipe([phrase], disable=["tagger"]) ] [0]
+        lu.show_info(en1)
+        # missing morph and pos
+
+        en2 = [d for d in self.en.pipe([phrase], disable=["parser"]) ] [0]
+        lu.show_info(en2)
+        # missing dep
+
+        en3 = [d for d in self.en.pipe([phrase], disable=["lemmatizer"]) ] [0]
+        lu.show_info(en3)
+        # missing lemmas, as you can imagine
+
+        en4 = [d for d in self.en.pipe([phrase], disable=["morphologizer"]) ] [0]
+        lu.show_info(en4)
+        # same as en3
+
+        '''
+        tagger -> pos and morph
+        parser -> token.dep_
+        
+        '''
+
+        bp = 'breakpoint'
+
+    '''
+    In English, the "tagger" step does the morph and the pos.
+    In Spanish, those are done by the "morphologizer"
+    =>  English tagger  <--> Spanish morphologizer, at least roughly
+    '''
+
+    def test_debugging(self):
+        text = "Ver D. Bonifacio las primeras muestras del estilo de Senquá y chiflarse por completo, fue todo uno"
+        #lu.show_info(self.es(text))
+        #lu.show_info(self.es('una cosa mas'))
+        #lu.show_info(self.es('tres cosas mas'))
+        lu.show_info(self.en('I run fast.  That is the first run of the program, this is the second run.'))
+        lu.show_info(self.en('I run fast.  That is the first run of, this is the second run.'))
+        lu.show_info(self.es(' Does the Whale’s Magnitude Diminish?—Will He Perish?'))
+
+    def test_examine_dep_parser(self):
+        text = "John ate eggs and  Mary ate potatoes"  # If there are double spaces, it will classify this as two
+        # sentences.
+        text = "I am golden."
+        lu.show_info(self.en(text))
+
 
 if __name__ == '__main__':
     unittest.main()
