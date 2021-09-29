@@ -17,6 +17,7 @@ DATA_COLUMNS = {COUNT: 0, POS: 1, SENTENCES: 2}
 
 DEFAULT_MAX_EXAMPLES = 20
 
+
 def get_counts_one_file(file_name, nlp, max=2000):
     with open(file_name, encoding='utf-8') as f:
         text_as_list = f.readlines()
@@ -61,7 +62,7 @@ def create_lemma_map_from_doc(doc):
 
 def create_lemma_map_from_sentences(sentences):
     lemma_map_start_time = time()
-    lemma_map = {} #create_lemma_map_from_doc(doc)
+    lemma_map = {}
     sentence_number = 0
     for sentence in sentences:
         for token in sentence:
@@ -72,22 +73,12 @@ def create_lemma_map_from_sentences(sentences):
             lemma = token.lemma_ #clean_word(token.lemma_).lower()
             # Calling clean_word causes unexpected behavior when it encounters words like "--El".  Spacy has already
             # classified it as PUNCT.
-            '''if lemma == 'personar' and token.pos_ == 'VERB':
-                print('\n\n\n!!!!\n\n\n')
-                print(word, token.lemma_, token.pos_, str(sentence_number), sentence)'''
-            '''if lemma == 'mã¡s' or token.text == 'mã¡s' or lemma == 'más' or token.text == 'más':
-                print('\n\n\n!!!!\n\n\n')
-                print(word, token.lemma_, token.pos_, str(token.morph), str(sentence_number), sentence)'''
 
             # Check for lemma in lemma map and the part of speech being token.pos_
-            # because sometimes nouns are misclassified as verbs
-            '''For example, cosa might be classified as a NOUN with lemma coser.  But coser is a verb, and its forms 
-            would also be classified as a VERB with lemma coser.  Similar with persona.
-            It is something with spacy.
-            So have different entries for when it sees a word as a verb and as a noun.
-            That was in the old version.
-            '''
-            # TODO:  see how much of a problem it is in the 3.0.5
+            # Because the same word could be a different part of speech.
+            # For example 'I run fast.  That is the first run of the program, this is the second run.'
+            # Also, I think that sometimes spacy misclassifies things.
+
             # TODO:  Use lemma, token.pos_ as the key; will require a slight change in create_lemma_df
             if lemma in lemma_map and lemma_map[lemma][DATA_COLUMNS[POS]] == token.pos_:
                 lemma_map[lemma][DATA_COLUMNS[COUNT]] += 1
@@ -115,18 +106,13 @@ def create_lemma_map_from_sentences(sentences):
 
 def create_lemma_map_from_file(file_names, nlp, pos_list=['VERB', 'NOUN', 'ADJ', 'ADV'], encoding='utf-8'):
     start_time = time()
-    #print(start_time)
-    #encoding = 'utf-8'
-    #encoding = 'iso-8859-15'
     if type(file_names) is str:
         with open(file_names, encoding=encoding) as f:
-            #text_as_list = f.readlines()
             text = f.read()
     elif type(file_names) is list:
         text = ''
         for file_name in file_names:
             with open(file_name, encoding=encoding) as f:
-                # text_as_list = f.readlines()
                 text += '\n'
                 text = text + f.read()
 
