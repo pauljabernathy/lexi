@@ -49,7 +49,7 @@ def show_examples_multiple_docs(doc_lm_pairs, lemma, max_examples=DEFAULT_MAX_EX
 def get_examples_multiple_docs(doc_lm_pairs, lemma, max_examples=DEFAULT_MAX_EXAMPLES):
     examples = []
     for doc, lm in doc_lm_pairs:
-        examples.extend(get_examples(doc, lm, lemma, max_examples))
+        examples.extend(get_examples(list(doc.sents), lm, lemma, max_examples))
     return examples
 
 

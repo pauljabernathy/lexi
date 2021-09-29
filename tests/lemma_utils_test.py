@@ -6,33 +6,6 @@ import time
 import word_count as wc
 
 
-class MyTestCase(unittest.TestCase):
-
-    def setUp(self):
-        self.es = spacy.load('es_core_news_lg')
-
-    def test_spacy_doc_similarity(self):
-        doc1 = self.es('Él come tacos.')
-        lu.show_info(doc1)
-        doc2 = self.es('Nosotros comemos tacos.')
-        lu.show_info(doc2)
-        '''similarity12 = doc1.similarity(doc2)
-        similarity21 = doc2.similarity(doc1)
-        print(similarity12)
-        print(similarity21)'''
-        doc3 = self.es('Ellos comen tacos.')
-        lu.show_info(doc3)
-        doc4 = self.es('Ellas comen tacos.')
-        lu.show_info(doc4)
-        docs = [doc1, doc2, doc3, doc4]
-        for i in range(len(docs)):
-            for j in range(0, i):
-                print(i + 1, j + 1, docs[i].similarity(docs[j]))
-
-    def test_search_for_example(self):
-        pass
-
-
 class ShowExamplesTest(unittest.TestCase):
 
     def setUp(self):
@@ -61,6 +34,93 @@ class ShowExamplesTest(unittest.TestCase):
         self.assertEqual(4, len(sentences_with_lemma))
         self.assertEqual(['Que tengas buen día.', 'Tienes un buen día.', 'Espero que tenga mucho dinero.',
                           'Tengo ganas de escribir una programa.'], sentences_with_lemma)
+
+    def test_get_examples(self):
+        doc1 = self.es('No quiero taco bell.  Nosotros queremos taco bell.  Ellos quieren taco bell.')
+        doc2 = self.es('No quiero taco bell.  Ellos no quieren taco bell.  Él quiere taco bell.  Ustedes quieren taco '
+                  'bell.  Tú no quieres taco bell.  Nosotros queremos taco bell.')
+
+        doc3 = self.es('Él quiere tacos.  Sin embargo, no los quiero.  Yo prefiero hamburguesas.  Siempre queremos '
+                  'hamburguesas cada fin de semana.')
+        lm1 = wc.create_lemma_map_from_doc(doc1)
+        lm2 = wc.create_lemma_map_from_doc(doc2)
+        lm3 = wc.create_lemma_map_from_doc(doc3)
+
+        sentences_1 = list(doc1.sents)
+        result1 = lu.get_examples(sentences_1, lm1, "querer")
+        self.assertEquals(3, len(result1))
+        self.assertEqual("No quiero taco bell.", result1[0])
+        self.assertEqual("Nosotros queremos taco bell.", result1[1])
+        self.assertEqual("Ellos quieren taco bell.", result1[2])
+
+        result1 = lu.get_examples(sentences_1, lm1, "no")
+        self.assertEquals(1, len(result1))
+        self.assertEqual("No quiero taco bell.", result1[0])
+
+        sentences_2 = list(doc2.sents)
+        result2 = lu.get_examples(sentences_2, lm2, "ellos")  # Spacy classifies the lemma for "ellos" as "él",
+        # not "ellos"
+        self.assertEquals(0, len(result2))
+
+        result2 = lu.get_examples(sentences_2, lm2, "él")
+        self.assertEquals(2, len(result2))
+        self.assertEqual("Ellos no quieren taco bell.", result2[0])
+        self.assertEqual("Él quiere taco bell.", result2[1])
+
+        sentences_3 = list(doc3.sents)
+        result3 = lu.get_examples(sentences_3, lm3, "preferir")
+        self.assertEquals(1, len(result3))
+        self.assertEqual("Yo prefiero hamburguesas.", result3[0])
+
+    def test_show_examples_multiple_docs(self):
+        doc1 = self.es('No quiero taco bell.  Nosotros queremos taco bell.  Ellos quieren taco bell.')
+        doc2 = self.es('No quiero taco bell.  Ellos no quieren taco bell.  Él quiere taco bell.  Ustedes quieren taco '
+                     'bell.  Tú no quieres taco bell.  Nosotros queremos taco bell.')
+
+        doc3 = self.es('Él quiere tacos.  Sin embargo, no los quiero.  Yo prefiero hamburguesas.  Siempre queremos '
+                     'hamburguesas cada fin de semana.')
+        lm1 = wc.create_lemma_map_from_doc(doc1)
+        lm2 = wc.create_lemma_map_from_doc(doc2)
+        lm3 = wc.create_lemma_map_from_doc(doc3)
+
+        pairs = [(doc1, lm1), (doc2, lm2), (doc3, lm3)]
+        él = lu.get_examples_multiple_docs(pairs, "él")
+        # self.assertEqual(4, len(él))
+        # For the sentence "Sin embargo, no los quiero.", Spacy classifies "los" as a variant of "él".
+        # los          PRON   Case=Acc|Gender=Masc|Number=Plur|Person=3|PrepCase=Npr|PronType=Prs "lemma:"  él
+        # But if you do "Sin embargo, no quiero los tacos." it classifies "los" as a variant of "el"
+        # "los          DET    Definite=Def|Gender=Masc|Number=Plur|PronType=Art "lemma:"  el"
+        # Not what I initially expected, but maybe it is correct.
+        self.assertEquals("Ellos quieren taco bell.", él[0])
+        self.assertEquals("Ellos no quieren taco bell.", él[1])
+        self.assertEquals("Él quiere taco bell.", él[2])
+        self.assertEquals("Él quiere tacos.", él[3])
+
+        yo = lu.get_examples_multiple_docs(pairs, "yo")  # The lemma for nosotros is "yo".
+        self.assertEqual(3, len(yo))
+        self.assertEqual("Nosotros queremos taco bell.", yo[0])
+        self.assertEqual("Nosotros queremos taco bell.", yo[1])
+        self.assertEqual("Yo prefiero hamburguesas.", yo[2])
+
+        preferir = lu.get_examples_multiple_docs(pairs, "preferir")
+        self.assertEqual(1, len(preferir))
+        self.assertEqual("Yo prefiero hamburguesas.", preferir[-1])
+
+    def test_show_examples_multiple_docs_real_files(self):
+        with open("../../../courses/portilla_nlp_python/corpus/spanishText_345000_350000_1.pkl", 'rb') as f:
+            cp_doc_1 = pickle.load(f)
+        with open("../../../courses/portilla_nlp_python/corpus/spanishText_345000_350000_1_lm.pkl", 'rb') as f:
+            cp_lm_1 = pickle.load(f)
+        with open("../../../courses/portilla_nlp_python/corpus/spanishText_345000_350000_2.pkl", 'rb') as f:
+            cp_doc_2 = pickle.load(f)
+        with open("../../../courses/portilla_nlp_python/corpus/spanishText_345000_350000_2_lm.pkl", 'rb') as f:
+            cp_lm_2 = pickle.load(f)
+        with open("../../../courses/portilla_nlp_python/corpus/spanishText_345000_350000_3.pkl", 'rb') as f:
+            cp_doc_3 = pickle.load(f)
+        with open("../../../courses/portilla_nlp_python/corpus/spanishText_345000_350000_3_lm.pkl", 'rb') as f:
+            cp_lm_3 = pickle.load(f)
+        pairs = [(cp_doc_1, cp_lm_1), (cp_doc_2, cp_lm_2), (cp_doc_3, cp_lm_3)]
+        lu.show_examples_multiple_docs(pairs, 'penumbra')
 
 
 class ShowInfoTest(unittest.TestCase):
@@ -96,7 +156,6 @@ class ShowInfoTest(unittest.TestCase):
         lu.show_info(self.es('Espero que tenga mucho dinero.'))
 
     def test_show_info_for_sentence_obj_not_doc(self):
-        #doc, lemma_map = wc.create_lemma_map_from_file("dona_perfecta.txt")
         with open('../fyj/fyj.pkl', 'rb') as f:
             fyj = pickle.load(f)
         sents = [s for s in fyj.sents]
@@ -379,7 +438,7 @@ class CompareMapAndAdHoc(unittest.TestCase):
                 print(ad_hoc_examples)
                 print(map_examples)
                 self.assertEquals(sorted(map_examples), sorted(ad_hoc_examples))
-            self.assertEqual(len(map_examples), len(ad_hoc_examples))
+            self.assertEqual(len(map_examples), len(ad_hoc_examples))    # Fails here
 
     def test_for_replication(self):
         sentence1 = '--¿Qué le digo?... Porque aunque no le he hablado nunca, le hablaré, si usted me lo manda.'
@@ -451,6 +510,24 @@ class Experiments(unittest.TestCase):
         pd.set_option('display.max_columns', 500)  # needed so it doesn't show ... for POS column
         pd.set_option('display.width', 10000)
 
+    def test_spacy_doc_similarity(self):
+        doc1 = self.es('Él come tacos.')
+        lu.show_info(doc1)
+        doc2 = self.es('Nosotros comemos tacos.')
+        lu.show_info(doc2)
+        '''similarity12 = doc1.similarity(doc2)
+        similarity21 = doc2.similarity(doc1)
+        print(similarity12)
+        print(similarity21)'''
+        doc3 = self.es('Ellos comen tacos.')
+        lu.show_info(doc3)
+        doc4 = self.es('Ellas comen tacos.')
+        lu.show_info(doc4)
+        docs = [doc1, doc2, doc3, doc4]
+        for i in range(len(docs)):
+            for j in range(0, i):
+                print(i + 1, j + 1, docs[i].similarity(docs[j]))
+
     def test_pipeline_excludes(self):
         frase = 'Que tengas buen dia.'
         d0 = self.es(frase)
@@ -483,7 +560,6 @@ class Experiments(unittest.TestCase):
         attribute_ruler -> ?  Doesn't seem to be something I am interested in right now.
         morphologizer -> morph dict and pos_
         '''
-        bp = 'breakpoint'
 
     def test_pipeline_excludes_english(self):
         phrase = 'Have a nice day.'
@@ -517,8 +593,6 @@ class Experiments(unittest.TestCase):
         
         '''
 
-        bp = 'breakpoint'
-
     '''
     In English, the "tagger" step does the morph and the pos.
     In Spanish, those are done by the "morphologizer"
@@ -533,6 +607,7 @@ class Experiments(unittest.TestCase):
         lu.show_info(self.en('I run fast.  That is the first run of the program, this is the second run.'))
         lu.show_info(self.en('I run fast.  That is the first run of, this is the second run.'))
         lu.show_info(self.es(' Does the Whale’s Magnitude Diminish?—Will He Perish?'))
+        lu.show_info(self.es("Nosotros queremos taco bell"))  # nosotros -> yo
 
     def test_examine_dep_parser(self):
         text = "John ate eggs and  Mary ate potatoes"  # If there are double spaces, it will classify this as two
