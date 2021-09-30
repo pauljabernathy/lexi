@@ -3,18 +3,25 @@
 {% endblock %}
 
 {% block body %}
-<h3>The Lemma pages</h3>
+<h4>Generate example sentences containing a given
+    <a href="https://en.wikipedia.org/wiki/Lemma_(morphology)">lemma</a>.</h4>
+
+I have been using it to generate example sentences for Spanish.  For example, enter a verb like "hablar," "querer" or
+"alejar" and it will give you sentences that use that verb in various tenses.
+
+At the moment, the source for Spanish text is a novel called Fortunata y Jacinta.  I have not actually read it, but
+it was long and freely available on <a href="https://www.gutenberg.org/">The Gutenberg Project</a>.  I have also
+included the text of Moby Dick, so you can do searches on a long novel in English.
 
 <form action="lemma" method="GET">
     lemma:  <input type="text" name="lemma" id="lemma">
-    <!--filters:
-    <table>
-        <tr><td><input type="text" name="filter_1_name"></td>
-            <td><input type="text" name="filter_1_value"></td></tr>
-        <tr><td><input type="text" name="filter_2_name"></td>
-            <td><input type="text" name="filter_2_value"></td></tr>
-    </table>-->
-    max sentences returned: <input type=number name="max_examples">
+    <br>
+    max sentences returned: <input type=number name="max_examples" value=20>
+    <br>source:
+    <select id="source" name="source" size="2">
+        <option value="fyj">Fortunaty y Jacinta (Spanish)</option>
+        <option value="md">Moby Dick (English)</option>
+    </select>
     <input type="submit" value="Search">
 </form>
 
