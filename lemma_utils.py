@@ -1,4 +1,4 @@
-import spacy
+#import spacy
 import pandas as pd
 DEFAULT_MAX_EXAMPLES = 20
 ALL_LEMMA_VALUES = [None, '']
