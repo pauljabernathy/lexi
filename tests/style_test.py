@@ -37,7 +37,7 @@ class SentenceLength(unittest.TestCase):
     def test_compare_sentence_lengths_1_and_2(self):
         import pickle
         print("moby")
-        with open('../en_docs_lms/moby_no_header_md.pkl', 'rb') as f:
+        with open('../en_docs_lms/moby_md.pkl', 'rb') as f:
             moby = pickle.load(f)
         """self.compare_sentence_lengths_1_and_2(moby)
         self.compare_sentence_lengths_1_and_2(moby)

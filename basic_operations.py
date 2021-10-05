@@ -1,6 +1,8 @@
 import re
 import pandas as pd
 
+PUNCTUATION_REGEX = '[.?!]'  # '[\.?!]' is unnecessary; don't need the \ before the . but I don't understand why
+
 
 def cleanse(text):
     text = text.lower()
@@ -11,39 +13,47 @@ def cleanse(text):
     text = re.sub('[^\w\s]', ' ', text)
     text = re.sub('\\n', ' ', text)
     text = re.sub(' +', ' ', text)
-    text = text.strip()     # Small think but remove a trailing space.
+    text = text.strip()     # Small thing but remove a trailing space.
     return text
 
 
-def tokenize(sentence):
+def tokenize_string(sentence):
     sentence = cleanse(sentence)
     return sentence.split(' ')
 
 
 def find_word_stats(text):
-    twitter_tokens = tokenize(text)
-    tokens_pd = pd.Series(twitter_tokens)
+    tokens = tokenize_string(text)
+    tokens_pd = pd.Series(tokens)
     token_hist = tokens_pd.value_counts()
-    stats = pd.DataFrame({'count': token_hist, 'fraction': token_hist / len(twitter_tokens)})
-    stats['fraction'] = stats['count'] / len(twitter_tokens)
+    stats = pd.DataFrame({'count': token_hist, 'fraction': token_hist / len(tokens)})
+    stats['fraction'] = stats['count'] / len(tokens)
     stats['cum_sum'] = stats['count'].cumsum()
-    stats['cum_frac'] = stats['cum_sum'] / len(twitter_tokens)
+    stats['cum_frac'] = stats['cum_sum'] / len(tokens)
     return stats
 
 
 def split_to_sentences(text):
-    p = re.compile('[\.?!]')
+    p = re.compile(PUNCTUATION_REGEX)
     sentences = p.split(text)
     for i in range(len(sentences)):
         sentences[i] = sentences[i].strip()
     return sentences
 
 
+def find_sentence_lengths_hist(list_of_sentences):
+    lengths = []
+    for i in range(len(list_of_sentences)):
+        lengths.append(len(list_of_sentences[i]))
+    hist = pd.Series(lengths).value_counts().sort_index()
+    return hist
+
+
 def tokenize_by_sentence(text):
     sentences = split_to_sentences(text)
     result = []
     for sentence in sentences:
-        current_result = tokenize(sentence)
+        current_result = tokenize_string(sentence)
         if current_result is not None and current_result != ['']:
             result.append(current_result)
     return result
@@ -58,11 +68,24 @@ def find_n_grams_list_of_strings(input: list, n: int):
     return ngrams
 
 
-def find_n_grams_list_of_lists(input: list, n: int):
+def find_n_grams_list_of_lists(list_of_sentences: list, n: int):
+    """
+    Make ngrams from the input.  The input is structured so that each sentence is separate, and ngrams do not cross
+    sentences.  For example, in the text "One sentence.  Two sentences.", 2 grams would be "one sentence" and "two
+    sentences", but not "sentence two".
+    :param list_of_sentences: Must be a list where each item is itself a list.  For example, the following text
+    "One sentence.  Two sentences.  To be or not to be.  Whatever.  The problem is that I don't even know " \
+               "what a sentence is." would need to be converted to the following format to be used in this function:
+    [['one', 'sentence'], ['two', 'sentences'], ['to', 'be', 'or', 'not', 'to', 'be'],
+    ['whatever'], ['the', 'problem', 'is', 'that', 'i', 'dont', 'even', 'know', 'what', 'a', 'sentence', 'is']
+    :param n: the "gram length"; for example 2 => bi grams ("to be", "be or", "or not", etc.)
+    3 => tri grams ("to be or", "be or not" etc.)
+    :return: a "flat" (one dimensional) list with all the n grams
+    """
     ngrams = []
-    if input is None:
+    if list_of_sentences is None:
         return ngrams
-    for item in input:
+    for item in list_of_sentences:
         current_ngrams = find_n_grams_list_of_strings(item, n)
         ngrams.extend(current_ngrams)
     return ngrams
@@ -70,16 +93,19 @@ def find_n_grams_list_of_lists(input: list, n: int):
 
 def find_n_grams_from_text(text, n):
     lists_of_words = tokenize_by_sentence(text)
-    ngrams = find_n_grams_list_of_strings(lists_of_words, n)
+    ngrams = find_n_grams_list_of_lists(lists_of_words, n)
     return ngrams
 
 
 if __name__ == "__main__":
-    with open(r'C:\Users\paulj_1e1uzlz\courses\data_science_capstone\en_US/twitter_train.txt', 'r', encoding='UTF-8') as f:
-        train = f.read()
 
-    with open(r'C:\Users\paulj_1e1uzlz\courses\data_science_capstone\en_US/twitter_test.txt', 'r', encoding='UTF-8') as f:
-        test = f.read()
+    file_name = '../../courses/data_science_capstone/en_US/twitter_train.txt'
 
-    train_df = find_word_stats(train)
+    with open(file_name, 'r', encoding='UTF-8') as f:
+        file_text = f.read()
+    word_stats_df = find_word_stats(file_text)
+    sentences = tokenize_by_sentence(file_text)
+    sentence_lengths = find_sentence_lengths_hist(sentences)
+    two_grams = find_n_grams_list_of_lists(sentences, 2)
+    three_grams = find_n_grams_list_of_lists(sentences, 3)
     a = 'b'

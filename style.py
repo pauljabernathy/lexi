@@ -15,7 +15,8 @@ ADV_COUNT = 'num sentences with a given number of adverbs'
 ADJ_COUNT = 'num sentences with a given number of adjectives'
 
 # TODO: Deal with sentences separated by double spaces.
-# TODO: Consistency on paramaeters - string, doc, or pkl file
+# TODO: Consistency on parameters - string, doc, or pkl file
+
 
 def find_sentence_length(spacy_sentence, pos_exclude=POS_EXCLUDE):
     tokens = [x for x in spacy_sentence if x.pos_ not in pos_exclude]

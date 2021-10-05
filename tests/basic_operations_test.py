@@ -12,6 +12,9 @@ class TokenizeTest(unittest.TestCase):
         text = "You're nice.  maybe; I don't think I want to bE a Robot!"
         self.assertEqual("youre nice maybe i dont think i want to be a robot", cleanse(text))
 
+        text = "You're nice.  maybe; \nI don't think I want to bE a Robot!"
+        self.assertEqual("youre nice maybe i dont think i want to be a robot", cleanse(text))
+
     def test_cleanse_apostrophe(self):
         text = "what's up you're hot"
         self.assertEqual("whats up youre hot", cleanse(text))
@@ -26,25 +29,25 @@ class TokenizeTest(unittest.TestCase):
             test_2 = f.read()
             result = cleanse(test_2)
             # print(result)
-            tokens = tokenize(result)
-            # print(tokens)
+            tokens = tokenize_string(result)
+            print(tokens)
 
     def test_basic_tokenize(self):
         text = "youre nice maybe i dont think i want to be a robot"
-        result = tokenize(text)
+        result = tokenize_string(text)
         # print(result)
         self.assertEqual(['youre', 'nice', 'maybe', 'i', 'dont', 'think', 'i', 'want', 'to', 'be', 'a', 'robot'],
                          result)
 
     def test_tokenize_with_some_punct_and_upper(self):
         text = "You're nice.  maybe; I don't think I want to bE a Robot!"
-        result = tokenize(text)
+        result = tokenize_string(text)
         # print(result)
         self.assertEqual(['youre', 'nice', 'maybe', 'i', 'dont', 'think', 'i', 'want', 'to', 'be', 'a', 'robot'],
                          result)
 
     def test_tokenize_blank_input(self):
-        result = tokenize('')
+        result = tokenize_string('')
         self.assertEqual([''], result)
         # At the moment it is returning [''] for blank input, due to the way split() works.  I don't like it but
         # am not sure what the best option really is.
@@ -69,6 +72,23 @@ class TokenizeTest(unittest.TestCase):
                            ['whatever'], ['the', 'problem', 'is', 'that', 'i', 'dont', 'even', 'know', 'what', 'a',
                                           'sentence', 'is']]
         self.assertEqual(expected_result, tokens)
+
+    def test_sentence_length_hist(self):
+        text = "One sentence.  Two sentences.  To be or not to be.  Whatever.  The problem is that I don't even know " \
+               "what a sentence is."
+        sentences = tokenize_by_sentence(text)
+        hist = find_sentence_lengths_hist(sentences)
+        expected_result = pd.Series([2, 2, 6, 1, 12]).value_counts().sort_index()
+        print(hist)
+        self.assertTrue((hist == expected_result).all())
+
+
+class TestStats(unittest.TestCase):
+
+    def test_basic_word_stats(self):
+        text = "You're nice.  maybe; I don't think I want to bE a Robot!"
+        stats = find_word_stats(text)
+        print(stats)
 
 
 class NGramsTest(unittest.TestCase):
