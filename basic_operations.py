@@ -4,6 +4,8 @@ import pandas as pd
 PUNCTUATION_REGEX = '[.?!]'  # '[\.?!]' is unnecessary; don't need the \ before the . but I don't understand why
 
 
+# Cleansing
+
 def cleanse(text):
     text = text.lower()
     text = text.replace("'", '')    # Remove apostrophes
@@ -17,10 +19,32 @@ def cleanse(text):
     return text
 
 
+# Tokenization
+
 def tokenize_string(sentence):
     sentence = cleanse(sentence)
     return sentence.split(' ')
 
+
+def split_to_sentences(text):
+    p = re.compile(PUNCTUATION_REGEX)
+    sentences = p.split(text)
+    for i in range(len(sentences)):
+        sentences[i] = sentences[i].strip()
+    return sentences
+
+
+def tokenize_by_sentence(text):
+    sentences = split_to_sentences(text)
+    result = []
+    for sentence in sentences:
+        current_result = tokenize_string(sentence)
+        if current_result is not None and current_result != ['']:
+            result.append(current_result)
+    return result
+
+
+# Statistics
 
 def find_word_stats(text):
     tokens = tokenize_string(text)
@@ -33,14 +57,6 @@ def find_word_stats(text):
     return stats
 
 
-def split_to_sentences(text):
-    p = re.compile(PUNCTUATION_REGEX)
-    sentences = p.split(text)
-    for i in range(len(sentences)):
-        sentences[i] = sentences[i].strip()
-    return sentences
-
-
 def find_sentence_lengths_hist(list_of_sentences):
     lengths = []
     for i in range(len(list_of_sentences)):
@@ -49,15 +65,7 @@ def find_sentence_lengths_hist(list_of_sentences):
     return hist
 
 
-def tokenize_by_sentence(text):
-    sentences = split_to_sentences(text)
-    result = []
-    for sentence in sentences:
-        current_result = tokenize_string(sentence)
-        if current_result is not None and current_result != ['']:
-            result.append(current_result)
-    return result
-
+# n grams
 
 def find_n_grams_list_of_strings(input: list, n: int):
     ngrams = []

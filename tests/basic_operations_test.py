@@ -1,8 +1,13 @@
 import unittest
 from basic_operations import *
 
+# TODO:  For each of these, test some potentially problematic input.
+# Empty strings, anything else.  For the coursera project, each file will have
+# plenty of words and sentences, but for long term robustness, come up with
+# more test cases.
 
-class TokenizeTest(unittest.TestCase):
+
+class CleansingTest(unittest.TestCase):
 
     def test_cleanse(self):
         text = "you're nice.  maybe; I don't think I want to be a robot!"
@@ -31,6 +36,9 @@ class TokenizeTest(unittest.TestCase):
             # print(result)
             tokens = tokenize_string(result)
             print(tokens)
+
+
+class TokenizeTest(unittest.TestCase):
 
     def test_basic_tokenize(self):
         text = "youre nice maybe i dont think i want to be a robot"
@@ -73,6 +81,14 @@ class TokenizeTest(unittest.TestCase):
                                           'sentence', 'is']]
         self.assertEqual(expected_result, tokens)
 
+
+class StatsTest(unittest.TestCase):
+
+    def test_basic_word_stats(self):
+        text = "You're nice.  maybe; I don't think I want to bE a Robot!"
+        stats = find_word_stats(text)
+        print(stats)
+
     def test_sentence_length_hist(self):
         text = "One sentence.  Two sentences.  To be or not to be.  Whatever.  The problem is that I don't even know " \
                "what a sentence is."
@@ -81,14 +97,6 @@ class TokenizeTest(unittest.TestCase):
         expected_result = pd.Series([2, 2, 6, 1, 12]).value_counts().sort_index()
         print(hist)
         self.assertTrue((hist == expected_result).all())
-
-
-class TestStats(unittest.TestCase):
-
-    def test_basic_word_stats(self):
-        text = "You're nice.  maybe; I don't think I want to bE a Robot!"
-        stats = find_word_stats(text)
-        print(stats)
 
 
 class NGramsTest(unittest.TestCase):
