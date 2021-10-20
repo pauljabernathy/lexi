@@ -1,5 +1,6 @@
 import re
 import pandas as pd
+import time
 
 PUNCTUATION_REGEX = '[.?!]'  # '[\.?!]' is unnecessary; don't need the \ before the . but I don't understand why
 
@@ -67,7 +68,7 @@ def find_sentence_lengths_hist(list_of_sentences):
 
 # n grams
 
-def find_n_grams_list_of_strings(input: list, n: int):
+def find_n_grams_1_d_list(input: list, n: int):
     ngrams = []
     if n <= 0:
         return ngrams
@@ -94,7 +95,7 @@ def find_n_grams_list_of_lists(list_of_sentences: list, n: int):
     if list_of_sentences is None:
         return ngrams
     for item in list_of_sentences:
-        current_ngrams = find_n_grams_list_of_strings(item, n)
+        current_ngrams = find_n_grams_1_d_list(item, n)
         ngrams.extend(current_ngrams)
     return ngrams
 
@@ -108,7 +109,9 @@ def find_n_grams_from_text(text, n):
 if __name__ == "__main__":
 
     file_name = '../../courses/data_science_capstone/en_US/twitter_train.txt'
+    file_name = '../../courses/data_science_capstone/en_US/moby_dick_no_header.txt'
 
+    start = time.time()
     with open(file_name, 'r', encoding='UTF-8') as f:
         file_text = f.read()
     word_stats_df = find_word_stats(file_text)
@@ -116,4 +119,5 @@ if __name__ == "__main__":
     sentence_lengths = find_sentence_lengths_hist(sentences)
     two_grams = find_n_grams_list_of_lists(sentences, 2)
     three_grams = find_n_grams_list_of_lists(sentences, 3)
-    a = 'b'
+    end = time.time()
+    print("completed in", (end - start), "seconds")

@@ -103,22 +103,27 @@ class NGramsTest(unittest.TestCase):
 
     def test_bi_grams(self):
         input = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-        bi_grams = find_n_grams_list_of_strings(input, 2)
+        bi_grams = find_n_grams_1_d_list(input, 2)
         # print(bi_grams)
         self.assertEqual([[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9]], bi_grams)
 
     def test_tri_grams(self):
         input = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-        tri_grams = find_n_grams_list_of_strings(input, 3)
+        tri_grams = find_n_grams_1_d_list(input, 3)
         # print(tri_grams)
         self.assertEqual([ [0, 1, 2], [1, 2, 3], [2, 3, 4], [3, 4, 5], [4, 5, 6], [5, 6, 7], [6, 7, 8], [7, 8, 9] ],
                           tri_grams)
 
     def test_less_intelligent_n(self):
         input = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-        self.assertEqual([[0], [1], [2], [3], [4], [5], [6], [7], [8], [9]], find_n_grams_list_of_strings(input, 1))
-        self.assertEqual([], find_n_grams_list_of_strings(input, 0))
-        self.assertEquals([], find_n_grams_list_of_strings(input, -1))
+        self.assertEqual([[0], [1], [2], [3], [4], [5], [6], [7], [8], [9]], find_n_grams_1_d_list(input, 1))
+        self.assertEqual([], find_n_grams_1_d_list(input, 0))
+        self.assertEquals([], find_n_grams_1_d_list(input, -1))
+
+        input = [1]
+        self.assertEqual([[1]], find_n_grams_1_d_list(input, 1))  # should work
+        self.assertEqual([], find_n_grams_1_d_list(input, 2))  # should work
+
 
     def test_ngrams_list_of_lists(self):
         input = [['one', 'sentence'], ['two', 'sentences'], ['to', 'be', 'or', 'not', 'to', 'be'],
@@ -148,7 +153,6 @@ class NGramsTest(unittest.TestCase):
         self.assertEqual([], find_n_grams_list_of_lists(input, -1))
 
     def test_find_n_grams_from_text(self):
-        pass
         text = "One sentence.  Two sentences.  To be or not to be.  Whatever.  The problem is that I don't even know " \
                "what a sentence is."
         expected_result = [ ['one', 'sentence'], ['two', 'sentences'], ['to', 'be'], ['be', 'or'], ['or', 'not'],
