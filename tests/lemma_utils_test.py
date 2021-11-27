@@ -131,6 +131,7 @@ class ShowInfoTest(unittest.TestCase):
 
     def test_show_info(self):
         sentence = 'The food we had yesterday was delicious'
+        sentence = "I'll go away sometime."
         lu.show_info(self.en(sentence))
 
     def test_show_info_es(self):

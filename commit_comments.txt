@@ -1,0 +1,18 @@
+~17:00 Nov 27
+I am committing a bunch of stuff I have been working on for the data science specialization.
+
+The changes are mostly about adding the ability to predict the next word, and then about speeding things up.
+
+- Computing histograms of ngrams, which can be saved and then reloaded later.
+- the prediction module for making predictions.
+- the vector_utils module for stuff dealing with word vectors.
+- There are a lot of functions that do the same thing in slightly different ways, because I was doing a lot of
+performance testing.
+- One result of the investigation into performance was computing a map of all the indexes, or indices I guess, of the
+ngram histograms that contain a certain start (all the words except the last), because the function that searched the
+ngram histogram (predictions.match_n_grams_one_hist()) was a little slow.
+
+
+A couple of notes:
+- A bunch of files created and referenced in the unit tests are not committed because they are so huge.
+- I plan to remove many of the duplicate functions and keep the ones that were shown to be faster.

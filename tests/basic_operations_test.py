@@ -81,6 +81,14 @@ class TokenizeTest(unittest.TestCase):
                                           'sentence', 'is']]
         self.assertEqual(expected_result, tokens)
 
+    def test_tokenize_stuff_with_commas(self):
+        # something I found in the file previously
+        text = "sanctified,spiritual,superhuman,superlative,supernatural,transcendental,"
+        result = tokenize_string(text)
+        print(result)
+        self.assertEqual(['sanctified', 'spiritual', 'superhuman', 'superlative', 'supernatural', 'transcendental'],
+                         result)
+
 
 class StatsTest(unittest.TestCase):
 
@@ -124,7 +132,6 @@ class NGramsTest(unittest.TestCase):
         self.assertEqual([[1]], find_n_grams_1_d_list(input, 1))  # should work
         self.assertEqual([], find_n_grams_1_d_list(input, 2))  # should work
 
-
     def test_ngrams_list_of_lists(self):
         input = [['one', 'sentence'], ['two', 'sentences'], ['to', 'be', 'or', 'not', 'to', 'be'],
                  ['whatever'], ['the', 'problem', 'is', 'that', 'i', 'dont', 'even', 'know', 'what', 'a',
@@ -155,14 +162,59 @@ class NGramsTest(unittest.TestCase):
     def test_find_n_grams_from_text(self):
         text = "One sentence.  Two sentences.  To be or not to be.  Whatever.  The problem is that I don't even know " \
                "what a sentence is."
-        expected_result = [ ['one', 'sentence'], ['two', 'sentences'], ['to', 'be'], ['be', 'or'], ['or', 'not'],
-                           ['not', 'to'], ['to', 'be'], ['the', 'problem'], ['problem', 'is'], ['is', 'that'],
-                           ['that', 'i'], ['i', 'dont'], ['dont', 'even'], ['even', 'know'], ['know', 'what'],
-                           ['what', 'a'], ['a', 'sentence'], ['sentence', 'is']]
+        expected_result = [
+            ['one', 'sentence'], ['two', 'sentences'], ['to', 'be'], ['be', 'or'], ['or', 'not'],
+            ['not', 'to'], ['to', 'be'], ['the', 'problem'], ['problem', 'is'], ['is', 'that'], ['that', 'i'],
+            ['i', 'dont'], ['dont', 'even'], ['even', 'know'], ['know', 'what'], ['what', 'a'], ['a', 'sentence'],
+            ['sentence', 'is']
+        ]
         result = find_n_grams_from_text(text, 2)
         print(result)
         self.assertEqual(expected_result, result)
 
+    def test_convert_n_grams_to_hist_df(self):
+        n_grams = [
+            ['on', 'the', 'fridge'], ['on', 'the', 'table'], ['on', 'the', 'fridge'], ['the', 'stupid', 'duck'],
+            ['the', 'stupid', 'dog'], ['on', 'the', 'fridge'], ['on', 'the', 'table'], ['the', 'stupid', 'duck']
+        ]
+        hist = convert_n_grams_to_hist_df(n_grams)
+        self.assertEqual(4, hist.shape[0])
+        on_the_fridge = hist[hist.gram.str.contains("on the fridge")]
+        self.assertEqual(1, on_the_fridge.shape[0])
+        self.assertEqual(3, on_the_fridge.iloc[0]["count"])
+        # on_the_fridge.iloc[0].count does not work because count() is a function
+
+    def test_can_match_from_n_gram_hist(self):
+        n_grams = [
+            ['on', 'the', 'fridge'], ['on', 'the', 'table'], ['on', 'the', 'fridge'], ['the', 'stupid', 'duck'],
+            ['the', 'stupid', 'dog'], ['on', 'the', 'fridge'], ['on', 'the', 'table'], ['the', 'stupid', 'duck']
+        ]
+        hist = convert_n_grams_to_hist_df(n_grams)
+        on_the = hist[hist.gram.str.contains("on the")]
+        self.assertEqual(2, on_the.shape[0])
+        # self.assertEqual(pd.DataFrame({"gram": ["on the fridge"], "count": [3]}).iloc[0], on_the.iloc[0])
+        self.assertTrue(pd.DataFrame({"gram": ["on the fridge"], "count": [3]}).iloc[0].equals(on_the.iloc[0]))
+        self.assertTrue(pd.DataFrame({"gram": ["on the table"], "count": [2]}).iloc[0].equals(on_the.iloc[1]))
+
+
+class PrefixMapTest(unittest.TestCase):
+
+    def test_split_prefix(self):
+        self.assertEqual("", split_prefix("one"))
+        self.assertEqual("", split_prefix(""))
+        self.assertEqual("one", split_prefix("one two"))
+        self.assertEqual("one two", split_prefix("one two three"))
+        self.assertEqual("one two", split_prefix("one two three"))
+        self.assertEqual("one two three", split_prefix("one two three four"))
+        self.assertEqual("one two three four", split_prefix("one two three four five"))
+
+    def test_create_prefix_map(self):
+        hist = pd.read_csv('../en_US.twitter.txt_4_grams.csv')
+        prefix_map = create_prefix_map(hist)
+        bp = 'break point here'
+
+        with open("../word_stats_pkls/four_grams_prefix_map.pkl", 'wb') as f:
+            pickle.dump(prefix_map, f)
 
 if __name__ == '__main__':
     unittest.main()
