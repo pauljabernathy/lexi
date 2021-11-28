@@ -130,133 +130,94 @@ class PerfTest(unittest.TestCase):
         self.load_n_grams()
         # list_of_hists = [self.four_grams_hist, self.five_grams_hist, self.six_grams_hist]
         result = []
-        tokens = ['romantic', 'date', 'at', 'the']
-        '''for hist in list_of_hists:
-            word_length = len(hist.iloc[0][constants.GRAM_COLUMN_NAME].split(" "))
-            current_result1 = prd.match_n_grams_one_hist(tokens[-(word_length - 1):], hist)
-            # print(current_result1.head(25))
-            # results.append(current_result.head(25))
-            current_result2 = prd.match_n_grams_one_hist_2(tokens[-(word_length - 1):], hist)
-            current_result3 = prd.match_n_grams_one_hist_3(tokens[-(word_length - 1):], hist)
-            self.assertTrue(current_result1.equals(current_result2))
-            self.assertTrue(current_result1.equals(current_result3))
-            self.assertTrue(current_result2.equals(current_result3))
-            '''
+        tokens = ['date', 'at', 'the']
 
         result1 = prd.match_n_grams_one_hist(tokens, self.four_grams_hist)
         result2 = prd.match_n_grams_one_hist_2(tokens, self.four_grams_hist)
-        result3 = prd.match_n_grams_one_hist_3(tokens, self.four_grams_hist)
-        result4 = prd.match_n_grams_one_hist_4(tokens, self.four_grams_hist)
+        #result3 = prd.match_n_grams_one_hist_3(tokens, self.four_grams_hist)
+        #result4 = prd.match_n_grams_one_hist_4(tokens, self.four_grams_hist)
 
-        n = 10
-        tokens = ['date', 'at', 'the']
-        print(1)
-        start_1 = time.time()
-        for i in range(n):
-            prd.match_n_grams_one_hist(tokens, self.four_grams_hist)
-        end_1 = time.time()
-        print("time 1", end_1 - start_1)
+        # indices = [4915655, 5704679, 9227004, 9479448, 9992499, 11504314, 13198614, 13295528, 14050567, 15405597]
+        indices = [2096383, 3646317, 3687529, 6987272, 7082085, 7869870, 11451942, 12106969, 12469418, 15648995]
 
-        print(2)
-        start_2 = time.time()
-        for i in range(n):
-            prd.match_n_grams_one_hist_2(tokens, self.four_grams_hist)
-        end_2 = time.time()
-        print("time 2", end_2 - start_2)
-
-        print(3)
-        start_3 = time.time()
-        for i in range(n):
-            prd.match_n_grams_one_hist_3(tokens, self.four_grams_hist)
-        end_3 = time.time()
-        print("time 3", end_3 - start_3)
-
-        print(4)
-        start_4 = time.time()
-        for i in range(n):
-            prd.match_n_grams_one_hist_4(tokens, self.four_grams_hist)
-        end_4 = time.time()
-        print("time 4", end_4 - start_4)
-
-        '''
-        Process finished with exit code 0
-        1
-        time 1 49.895774602890015
-        2
-        time 2 47.3312566280365
-        3
-        time 3 51.67874097824097
-        4
-
-        time 3 50.7314555644989
-        '''
-
-    def test_g_matches_times_2(self):
-        self.load_n_grams()
-        tokens = ['date', 'at', 'the']
-        '''result2 = prd.match_n_grams_one_hist_2(tokens, self.four_grams_hist)
-        result2_2 = prd.match_n_grams_one_hist_2_2(tokens, self.four_grams_hist)
-        result2_3 = prd.match_n_grams_one_hist_2_3(tokens, self.four_grams_hist)
-        print(result2.equals(result2_2))
-        print(result2.equals(result2_3))
-        print(tokens)
-        print(result2_3)
-        tokens = ['a', 'case', 'of']
-        result2 = prd.match_n_grams_one_hist_2(tokens, self.four_grams_hist)
-        result2_2 = prd.match_n_grams_one_hist_2_2(tokens, self.four_grams_hist)
-        result2_3 = prd.match_n_grams_one_hist_2_3(tokens, self.four_grams_hist)
-        print(result2.equals(result2_2))
-        print(result2.equals(result2_3))
-        print(tokens)
-        print(result2_3)'''
-
-        n = 10
-        tokens = ['date', 'at', 'the']
-        start_2_2 = time.time()
-        for i in range(n):
-            # prd.match_n_grams_one_hist_2_2(tokens, self.four_grams_hist)
-            pass
-        end_2_2 = time.time()
-        print("time 2_2", end_2_2 - start_2_2)
-
-        '''
-        start_2_3 = time.time()
-        for i in range(n):
-            prd.match_n_grams_one_hist_2_3(tokens, self.four_grams_hist)
-        end_2_3 = time.time()
-        print("time 2_3", end_2_3 - start_2_3)
-
-        start_3 = time.time()
-        for i in range(n):
-            prd.match_n_grams_one_hist_3(tokens, self.four_grams_hist)
-        end_3 = time.time()
-        print("time 3", end_3 - start_3)
-
-        import numpy as np
-        start_with_array = time.time()
-        array = np.array(self.four_grams_hist.gram)
-        for i in range(n):
-            prd.match_n_grams_one_hist_with_array(tokens, array)
-        end_with_array = time.time()
-        print("time with np array", end_with_array - start_with_array)
-        '''
-        result2 = prd.match_n_grams_one_hist_2(tokens, self.four_grams_hist)
-        indices = [4915655, 5704679, 9227004, 9479448, 9992499, 11504314, 13198614, 13295528, 14050567, 15405597]
         indices_result = prd.match_n_grams_by_index(indices, self.four_grams_hist)
         self.assertTrue(result2.equals(indices_result))
+        self.assertTrue(result1.equals(indices_result))
 
-        print(2)
-        start_2 = time.time()
+        n = 10
+        # tokens = ['date', 'at', 'the']
+        print("original")
+        start_original = time.time()
         for i in range(n):
-            prd.match_n_grams_one_hist_2(tokens, self.four_grams_hist)
-        end_2 = time.time()
-        print("time 2", end_2 - start_2)
+            prd.match_n_grams_one_hist(tokens, self.four_grams_hist)
+        end_original = time.time()
+        print("time of original function", end_original - start_original)
 
         start_with_index = time.time()
         for i in range(n):
             prd.match_n_grams_by_index(indices, self.four_grams_hist)
         end_with_index = time.time()
         print("using the index", end_with_index - start_with_index)
+
+        print("match_n_grams_one_hist_2")
+        start_2 = time.time()
+        for i in range(n):
+            prd.match_n_grams_one_hist_2(tokens, self.four_grams_hist)
+        end_2 = time.time()
+        print("time 2", end_2 - start_2)
+
+        print("match_n_grams_one_hist_2_2")
+        start_2_2 = time.time()
+        for i in range(n):
+            prd.match_n_grams_one_hist_2_2(tokens, self.four_grams_hist)
+            pass
+        end_2_2 = time.time()
+        print("time 2_2", end_2_2 - start_2_2)
+
+        print("match_n_grams_one_hist_2_3")
+        start_2_3 = time.time()
+        for i in range(n):
+            prd.match_n_grams_one_hist_2_3(tokens, self.four_grams_hist)
+            pass
+        end_2_3 = time.time()
+        print("time 2_3", end_2_3 - start_2_3)
+
+        print("match_n_grams_one_hist_3")
+        start_3 = time.time()
+        for i in range(n):
+            prd.match_n_grams_one_hist_3(tokens, self.four_grams_hist)
+        end_3 = time.time()
+        print("time 3", end_3 - start_3)
+
+        print("match_n_grams_one_hist_4")
+        start_4 = time.time()
+        for i in range(n):
+            prd.match_n_grams_one_hist_4(tokens, self.four_grams_hist)
+        end_4 = time.time()
+        print("time 4", end_4 - start_4)
+
+
+        """
+        original
+        time of original function 58.02697563171387
+        using the index 0.0019838809967041016
+        match_n_grams_one_hist_2
+        time 2 50.94853067398071
+        match_n_grams_one_hist_2_2
+        time 2_2 50.930670976638794
+        match_n_grams_one_hist_2_3
+        time 2_3 74.7573893070221
+        match_n_grams_one_hist_3
+        time 3 52.255473136901855
+        match_n_grams_one_hist_4
+        time 4 56.84636116027832
+        """
+        # => The functions that use np.vectorize() are not must faster than the original.  A little, yes,
+        # but still not ware we are looking for.  In fact, 3 was slower, at least in this run.
+        # => Using the index is much faster by orders of magnitude.
+
+
+    # The below tests are for testing the performance of a map vs a data frame.
 
     def get_from_map(self, map, search_term):
         return map[search_term]
@@ -322,6 +283,10 @@ class PerfTest(unittest.TestCase):
         indices 0.005324700000002736
         => I think I can conclude it is faster to use the indices stored somewhere previously
         """
+
+        # From the above two tests, concluding that it is faster to get stuff from a map that from a data frame,
+        # even by index.  So we if are using an index for getting stuff from the data frame, it is better to store
+        # than in a map than in some other data frame.
 
 
 class PredictFromNGramsTest(unittest.TestCase):
@@ -456,6 +421,9 @@ class PredictFromNGramsTest(unittest.TestCase):
         result as the original function to collect ngrams
         :return:
         """
+        # TODO:  An actual unit test using small test data, that does not depend on "real word" data, in addition to the
+        # "real word" data below.
+
         self.load_n_grams()
         with open(PKLS_DIR + "four_grams_prefix_map.pkl", "rb") as f:
             prefix_map = pickle.load(f)
@@ -465,26 +433,6 @@ class PredictFromNGramsTest(unittest.TestCase):
         result_from_indices = prd.match_n_grams_by_index(indices, self.four_grams_hist)
         baseline_result = prd.match_n_grams_one_hist(text.split(" "), self.four_grams_hist)
         self.assertTrue(baseline_result.equals(result_from_indices))
-        """
-        set(baseline_result.gram).difference(set(result_from_indices.gram))
-            Out[15]: 
-            {'thanks for thee follow',
-             'thanks for their sacrifice',
-             'thanks for their sacrifices',
-             'thanks for their service',
-             'thanks for them invite',
-             'thanks for ther rt',
-             'thanks for these awesome',
-             'thanks for these blips',
-             'thanks for these emily',
-             'thanks for these examples',
-             'thanks for these great',
-             'thanks for these rt',
-             'thanks for these tweets',
-             'thanks for thew mention'}
-        => The way with indices is slightly more accurate, in addition to being faster.  Probably, the original way 
-        just needs to add a space to the search text.
-        """
 
     def test_use_collect_word_vector_associations(self):
         phrases = [
