@@ -6,7 +6,7 @@ import numpy as np
 from functools import partial
 
 
-def match_n_grams_one_hist(tokens:list, ngrams_hist:pd.Series):
+def match_n_grams_one_hist_original(tokens:list, ngrams_hist:pd.Series):
     """
     :param tokens: a list of strings
     :param ngrams: a Series that comes from Series.value_counts()
@@ -99,7 +99,7 @@ def match_n_grams_one_hist_4(tokens:list, ngrams_hist:pd.Series):
     return matches3
 
 
-def collect_n_grams_matches(tokens, list_of_hists):
+def collect_n_grams_matches_original(tokens, list_of_hists):
     results = []
     if type(tokens) == str:
         tokens = tokens.split(" ")
@@ -108,8 +108,7 @@ def collect_n_grams_matches(tokens, list_of_hists):
 
     for hist in list_of_hists:
         word_length = len(hist.iloc[0][constants.GRAM_COLUMN_NAME].split(" "))
-        current_result = match_n_grams_one_hist(tokens[-(word_length - 1):], hist)
-        print(current_result.head(25))
+        current_result = match_n_grams_one_hist_original(tokens[-(word_length - 1):], hist)
         results.append(current_result.head(25))
     return results
 
@@ -129,7 +128,12 @@ def collect_n_grams_matches_indices(text, list_of_hists, list_of_prefix_maps):
         # word_length = len(hist.iloc[0][constants.GRAM_COLUMN_NAME].split(" "))
         hist = list_of_hists[i]
         prefix_map = list_of_prefix_maps[i]
-        indices = prefix_map[text]
+        word_length = len(hist.iloc[0][constants.GRAM_COLUMN_NAME].split(" "))
+        search_text = " ".join(text.split(" ")[-(word_length - 1):])
+        if search_text in prefix_map:
+            indices = prefix_map[search_text]
+        else:
+            indices = []
         current_result = match_n_grams_by_index(indices, hist)
         results.append(current_result)
     return results
@@ -237,8 +241,9 @@ def predict_from_word_vectors_matrix(tokens, matrix, nlp, POS="NOUN", top_number
 
 
 #def predict(tokens, list_of_hists, word_list, spacy_vocab, nlp, POS="NOUN"):
-def predict(tokens, list_of_hists, matrix_df, nlp, POS="NOUN"):
-    ngram_results = collect_n_grams_matches(tokens, list_of_hists)
+def predict(tokens, list_of_hists, list_of_prefix_maps, matrix_df, nlp, POS="NOUN"):
+    # ngram_results = collect_n_grams_matches_original(tokens, list_of_hists)
+    ngram_results = collect_n_grams_matches_indices(tokens, list_of_hists, list_of_prefix_maps)
     # If there is a clear winner in n grams, use that.
     # Defining "clear winner" could be a huge task in itself...
     threshold = 20
@@ -300,7 +305,7 @@ def do_predictions():
         if len(tokens) >= 6:
             six_result = predict_from_n_grams_one_hist(tokens[:5], hist6)
             print(six_result)'''
-        collect_n_grams_matches(tokens, hist_list)
+        collect_n_grams_matches_original(tokens, hist_list)
 
 
 def load_hist(file_name):

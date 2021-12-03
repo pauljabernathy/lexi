@@ -209,12 +209,33 @@ class PrefixMapTest(unittest.TestCase):
         self.assertEqual("one two three four", split_prefix("one two three four five"))
 
     def test_create_prefix_map(self):
-        hist = pd.read_csv('../en_US.twitter.txt_4_grams.csv')
-        prefix_map = create_prefix_map(hist)
-        bp = 'break point here'
+        # create a df, make a prefix map
+        gram = ["thanks for the follow", "cant wait to see", "some other word pair", "thanks for the rt"]
+        count = [8, 3, 1, 27]
+        histogram = pd.DataFrame({"gram": gram, "count": count})
+        prefix_map = create_prefix_map(histogram)
+        self.assertTrue(type(prefix_map) == dict)
+        self.assertEqual(dict, type(prefix_map))
+        self.assertEqual([0, 3], prefix_map["thanks for the"])
+        self.assertEqual([1], prefix_map["cant wait to"])
+        self.assertEqual([2], prefix_map["some other word"])
 
+    @unittest.skip("comment this out to create the prefix map")
+    def test_create_an_actual_prefix_map(self):
+        four_gram_hist = pd.read_csv('../en_US.twitter.txt_4_grams.csv')
+        four_gram_prefix_map = create_prefix_map(four_gram_hist)
         with open("../word_stats_pkls/four_grams_prefix_map.pkl", 'wb') as f:
-            pickle.dump(prefix_map, f)
+            pickle.dump(four_gram_prefix_map, f)
+
+        five_gram_hist = pd.read_csv('../en_US.twitter.txt_5_grams.csv')
+        five_gram_prefix_map = create_prefix_map(five_gram_hist)
+        with open("../word_stats_pkls/five_grams_prefix_map.pkl", 'wb') as f:
+            pickle.dump(five_gram_prefix_map, f)
+
+        six_gram_hist = pd.read_csv('../en_US.twitter.txt_6_grams.csv')
+        six_gram_prefix_map = create_prefix_map(six_gram_hist)
+        with open("../word_stats_pkls/six_grams_prefix_map.pkl", 'wb') as f:
+            pickle.dump(six_gram_prefix_map, f)
 
 if __name__ == '__main__':
     unittest.main()

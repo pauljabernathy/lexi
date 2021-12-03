@@ -132,7 +132,7 @@ class PerfTest(unittest.TestCase):
         result = []
         tokens = ['date', 'at', 'the']
 
-        result1 = prd.match_n_grams_one_hist(tokens, self.four_grams_hist)
+        result1 = prd.match_n_grams_one_hist_original(tokens, self.four_grams_hist)
         result2 = prd.match_n_grams_one_hist_2(tokens, self.four_grams_hist)
         #result3 = prd.match_n_grams_one_hist_3(tokens, self.four_grams_hist)
         #result4 = prd.match_n_grams_one_hist_4(tokens, self.four_grams_hist)
@@ -149,7 +149,7 @@ class PerfTest(unittest.TestCase):
         print("original")
         start_original = time.time()
         for i in range(n):
-            prd.match_n_grams_one_hist(tokens, self.four_grams_hist)
+            prd.match_n_grams_one_hist_original(tokens, self.four_grams_hist)
         end_original = time.time()
         print("time of original function", end_original - start_original)
 
@@ -264,7 +264,7 @@ class PerfTest(unittest.TestCase):
         text = "thanks for the"
         indices = prefix_map[text]
         index_partial = partial(prd.match_n_grams_by_index, indices=indices, n_grams_hist=self.four_grams_hist)
-        baseline_partial = partial(prd.match_n_grams_one_hist, tokens=text.split(" "),
+        baseline_partial = partial(prd.match_n_grams_one_hist_original, tokens=text.split(" "),
                                    ngrams_hist=self.four_grams_hist)
 
         n = 10
@@ -308,7 +308,54 @@ class PredictFromNGramsTest(unittest.TestCase):
         self.vocab = list(self.en.vocab.strings)
         self.en_words = set(v.lower() for v in self.vocab)
 
-    def load_n_grams(self):
+    def load_test_sentences(self):
+        sentences = [
+            "one two three",
+            "one two three four",
+            "one two three four five",
+            "one two three four five six",
+            "thanks for the coke",
+            "thanks for the beer",
+            "say thanks for the beer",
+            "no thanks for the beer",
+            "say no thanks for the beer",
+            "really no thanks for the beer",
+            "i say thanks for the beer",
+            "please say thanks for the beer",
+            "definitely say thanks for the beer",
+            "thanks for the beer that you gave me",
+            "thanks for the beer mug",
+            "why did I not",
+            "why did I not cry",
+            "why did I insult that big guy"
+        ]
+        self.test_sentences = [sentence.split(" ") for sentence in sentences]
+        return self.test_sentences
+
+    # TODO:  Decide if these will just get the test data or actually assign the self.whatever.
+    def load_test_n_grams(self):
+        sentences = self.load_test_sentences()
+        four_grams = bo.find_n_grams_list_of_lists(sentences, 4)
+        four_hist = bo.convert_n_grams_to_hist_df(four_grams)
+        five_hist = bo.convert_n_grams_to_hist_df(bo.find_n_grams_list_of_lists(sentences, 5))
+        six_hist = bo.convert_n_grams_to_hist_df(bo.find_n_grams_list_of_lists(sentences, 6))
+        self.test_histograms = [four_hist, five_hist, six_hist]
+        return self.test_histograms
+
+    def load_test_matrix_df(self):
+        # OK, for now just just the existing one, since it contains most words we need and I don't know that we
+        # really need to test it right now.
+        self.test_matrix_df = self.load_real_matrix_df()
+        return self.matrix_df
+
+    def load_test_prefix_maps(self):
+        self.test_prefix_maps = []
+        for hist in self.test_histograms:
+            current_prefix_map = bo.create_prefix_map(hist)
+            self.test_prefix_maps.append(current_prefix_map)
+        return self.test_prefix_maps
+
+    def load_real_n_grams(self):
         if not hasattr(self, "four_grams_hist") or self.four_grams_hist is None:
             self.four_grams_hist = pd.read_csv("../en_US.twitter.txt_4_grams.csv")
         if not hasattr(self, "five_grams_hist") or self.five_grams_hist is None:
@@ -316,12 +363,43 @@ class PredictFromNGramsTest(unittest.TestCase):
         if not hasattr(self, "six_grams_hist") or self.six_grams_hist is None:
             self.six_grams_hist = pd.read_csv("../en_US.twitter.txt_6_grams.csv")
 
-    def initialize_matrix_df(self):
+    def load_real_matrix_df(self):
         matrix_file_fp = "../word_stats_pkls/matrix_13686_df.pkl"
         matrix_file_fp = "../word_stats_pkls/news_matrix_df.pkl"
         if not hasattr(self, "matrix_df") or not self.matrix_df:
             with open(matrix_file_fp, 'rb') as f:
                 self.matrix_df = pickle.load(f)
+        return self.matrix_df
+
+    def load_real_prefix_maps(self):
+        if not hasattr(self, "four_grams_prefix_map") or self.four_grams_prefix_map is None:
+            with open(PKLS_DIR + "four_grams_prefix_map.pkl", "rb") as f:
+                self.four_grams_prefix_map = pickle.load(f)
+
+        if not hasattr(self, "five_grams_prefix_map") or self.five_grams_prefix_map is None:
+            with open(PKLS_DIR + "five_grams_prefix_map.pkl", "rb") as f:
+                self.five_grams_prefix_map = pickle.load(f)
+
+        if not hasattr(self, "six_grams_prefix_map") or self.six_grams_prefix_map is None:
+            with open(PKLS_DIR + "six_grams_prefix_map.pkl", "rb") as f:
+                self.six_grams_prefix_map = pickle.load(f)
+        return self.four_grams_prefix_map, self.five_grams_prefix_map, self.six_grams_prefix_map
+
+    def use_test_data(self):
+        ngram_hists = self.load_test_n_grams()
+        self.four_grams_hist = ngram_hists[0]
+        self.five_grams_hist = ngram_hists[1]
+        self.six_grams_hist = ngram_hists[2]
+        self.matrix_df = self.load_test_matrix_df()
+        maps = self.load_test_prefix_maps()
+        self.four_grams_prefix_map = maps[0]
+        self.five_grams_prefix_map = maps[1]
+        self.six_grams_prefix_map = maps[2]
+
+    def use_real_data(self):
+        self.load_real_n_grams()
+        self.load_real_matrix_df()
+        self.load_real_prefix_maps()
 
     def check_prediction(self, result, query_text):
         """
@@ -342,17 +420,17 @@ class PredictFromNGramsTest(unittest.TestCase):
         three_grams = bo.find_n_grams_list_of_lists(self.sentences, 3)
         hist = bo.convert_n_grams_to_hist_df(three_grams)
         query_list = ['thank', 'you']
-        result = prd.match_n_grams_one_hist(query_list, hist)
+        result = prd.match_n_grams_one_hist_original(query_list, hist)
         print(result)
         self.check_prediction(result, constants.N_GRAM_SEPARATOR.join(query_list))
 
     def test_match_4_grams(self):
         #four_grams = bo.find_n_grams_list_of_lists(self.sentences, 4)
-        self.load_n_grams()
+        self.load_real_n_grams()
         #hist = bo.convert_n_grams_to_hist_df(self.four_grams_hist)
         hist = self.four_grams_hist
         query_list = ['thank', 'you', 'for']
-        result = prd.match_n_grams_one_hist(query_list, hist)
+        result = prd.match_n_grams_one_hist_original(query_list, hist)
         #print(result)
         self.check_prediction(result, constants.N_GRAM_SEPARATOR.join(query_list))
 
@@ -364,58 +442,11 @@ class PredictFromNGramsTest(unittest.TestCase):
         print(result)
         result = prd.match_n_grams_one_hist("struggling but the".split(" "), hist)
         print(result)'''
-        result = prd.match_n_grams_one_hist("thanks for the".split(" "), hist)
+        result = prd.match_n_grams_one_hist_original("thanks for the".split(" "), hist)
         print(result.head())
         print(result.shape)
 
-    def test_match_ngrams_with_index(self):
-        pass
-
-    def test_collect_n_gram_matches(self):
-        four_grams = bo.find_n_grams_list_of_lists(self.sentences, 4)
-        five_grams = bo.find_n_grams_list_of_lists(self.sentences, 5)
-        six_grams = bo.find_n_grams_list_of_lists(self.sentences, 6)
-        four_grams_hist = bo.convert_n_grams_to_hist_df(four_grams)
-        five_grams_hist = bo.convert_n_grams_to_hist_df(five_grams)
-        six_grams_hist = bo.convert_n_grams_to_hist_df(six_grams)
-        prd.collect_n_grams_matches("ill dust them off and be on my", [four_grams_hist, five_grams_hist,
-                                                                        six_grams_hist])
-
-    def test_collect_n_grams_indices(self):
-        self.load_n_grams()
-
-        with open(PKLS_DIR + "four_grams_prefix_map.pkl", "rb") as f:
-            prefix_map = pickle.load(f)
-
-        text = "thanks for the"
-        tokens = ['thanks', 'for', 'the']
-        list_of_histograms = [self.four_grams_hist, self.five_grams_hist, self.six_grams_hist]
-        list_of_histograms = [self.four_grams_hist]
-        list_of_prefix_maps = [prefix_map]
-        new = prd.collect_n_grams_matches_indices(text, list_of_histograms, list_of_prefix_maps)
-        baseline = prd.collect_n_grams_matches(tokens, list_of_histograms)
-        print(baseline[0].head())
-        print(new[0].head())
-        self.assertTrue(baseline[0].equals(new[0].head(25)))   # Currently, the original way only returns 25 entries,
-        # the new way all of them.
-
-    def test_collect_word_vector_associations(self):
-        """
-        won't test this extremely vigorously right now because of the time it would take to do the calculations
-        => just check the size, dimensions, etc.
-        TODO:  Maybe a more rigorous test some time
-        """
-        text = "tiger roman"
-        self.initialize_matrix_df()
-        tokens = ['tiger', 'roman']
-        result = prd.collect_word_vector_associations(tokens, self.matrix_df)
-        self.assertEqual(7, result.shape[1])
-        self.assertTrue("word" in list(result.columns))
-        self.assertTrue("tiger" in list(result.columns))
-        self.assertTrue("roman" in list(result.columns))
-        self.assertEqual(self.matrix_df.shape[0], result.shape[0])
-
-    def test_collect_word_vectors_with_ngram_index(self):
+    def test_match_ngrams_by_index_agrees_with_original(self):
         """
         tests whether the function that matches ngrams using the index, match_n_grams_by_index(), gives the same
         result as the original function to collect ngrams
@@ -424,15 +455,89 @@ class PredictFromNGramsTest(unittest.TestCase):
         # TODO:  An actual unit test using small test data, that does not depend on "real word" data, in addition to the
         # "real word" data below.
 
-        self.load_n_grams()
+        self.load_real_n_grams()
         with open(PKLS_DIR + "four_grams_prefix_map.pkl", "rb") as f:
             prefix_map = pickle.load(f)
 
         text = "thanks for the"
         indices = prefix_map[text]
         result_from_indices = prd.match_n_grams_by_index(indices, self.four_grams_hist)
-        baseline_result = prd.match_n_grams_one_hist(text.split(" "), self.four_grams_hist)
+        baseline_result = prd.match_n_grams_one_hist_original(text.split(" "), self.four_grams_hist)
         self.assertTrue(baseline_result.equals(result_from_indices))
+
+    def test_match_ngrams_with_index(self):
+        self.use_test_data()
+
+        # Try with a blank list of indices; should give an empty DataFrame.
+        indices = []
+        result = prd.match_n_grams_by_index(indices, self.four_grams_hist)
+        self.assertEqual(0, result.shape[0])
+
+        indices = [0, 9]
+        result = prd.match_n_grams_by_index(indices, self.four_grams_hist)
+        self.assertEqual(2, result.shape[0])
+
+    def test_collect_n_gram_matches(self):
+        four_grams = bo.find_n_grams_list_of_lists(self.sentences, 4)
+        five_grams = bo.find_n_grams_list_of_lists(self.sentences, 5)
+        six_grams = bo.find_n_grams_list_of_lists(self.sentences, 6)
+        four_grams_hist = bo.convert_n_grams_to_hist_df(four_grams)
+        five_grams_hist = bo.convert_n_grams_to_hist_df(five_grams)
+        six_grams_hist = bo.convert_n_grams_to_hist_df(six_grams)
+        prd.collect_n_grams_matches_original("ill dust them off and be on my", [four_grams_hist, five_grams_hist,
+                                                                                six_grams_hist])
+
+    def test_collect_n_grams_indices(self):
+        #self.load_real_n_grams()
+        list_of_histograms = self.load_test_n_grams()
+
+        with open(PKLS_DIR + "four_grams_prefix_map.pkl", "rb") as f:
+            prefix_map = pickle.load(f)
+
+        text = "thanks for the"
+        tokens = ['thanks', 'for', 'the']
+        #list_of_histograms = [self.four_grams_hist, self.five_grams_hist, self.six_grams_hist]
+        #list_of_histograms = [self.four_grams_hist]
+        #list_of_prefix_maps = [prefix_map]
+        list_of_prefix_maps = self.load_test_prefix_maps()
+
+        # Test that it is the same as the old
+        new = prd.collect_n_grams_matches_indices(text, list_of_histograms, list_of_prefix_maps)
+        baseline = prd.collect_n_grams_matches_original(tokens, list_of_histograms)
+        # print(baseline[0].head())
+        # print(new[0].head())
+        self.assertTrue(baseline[0].equals(new[0].head(25)))   # Currently, the original way only returns 25 entries,
+        # the new way all of them.
+
+        # Test a phrase that is not in the test set; should return a list of empty DataFrames
+        text = "go on a romantic date"
+        result = prd.collect_n_grams_matches_indices(text, list_of_histograms, list_of_prefix_maps)
+        self.assertEqual(3, len(result))
+        for i in range(3):
+            self.assertEqual(0, result[i].shape[0])
+
+        # Now a phrase that is there.
+        text = "may i say thanks for the"
+        result = prd.collect_n_grams_matches_indices(text, list_of_histograms, list_of_prefix_maps)
+        self.assertEqual(3, len(result))
+        for i in range(3):
+            self.assertGreater(result[i].shape[0], 0)
+
+    def test_collect_word_vector_associations(self):
+        """
+        won't test this extremely vigorously right now because of the time it would take to do the calculations
+        => just check the size, dimensions, etc.
+        TODO:  Maybe a more rigorous test some time
+        """
+        text = "tiger roman"
+        self.load_real_matrix_df()
+        tokens = ['tiger', 'roman']
+        result = prd.collect_word_vector_associations(tokens, self.matrix_df)
+        self.assertEqual(7, result.shape[1])
+        self.assertTrue("word" in list(result.columns))
+        self.assertTrue("tiger" in list(result.columns))
+        self.assertTrue("roman" in list(result.columns))
+        self.assertEqual(self.matrix_df.shape[0], result.shape[0])
 
     def test_use_collect_word_vector_associations(self):
         phrases = [
@@ -443,7 +548,7 @@ class PredictFromNGramsTest(unittest.TestCase):
             "the good times and keep the faith during the",
             "If this isn't the cutest thing you've ever seen, then you must be",
         ]
-        self.initialize_matrix_df()
+        self.load_real_matrix_df()
         for phrase in phrases:
             tokens = phrase.lower().split(" ")
             result = prd.collect_word_vector_associations(tokens, self.matrix_df)
@@ -452,7 +557,7 @@ class PredictFromNGramsTest(unittest.TestCase):
 
     def test_get_top_results(self):
         tokens = ['tiger', 'roman']
-        self.initialize_matrix_df()
+        self.load_real_matrix_df()
         wv = prd.collect_word_vector_associations(tokens, self.matrix_df)
         top_results = prd.get_top_results(wv, self.en, 10, pos="NOUN")
         self.assertEqual(10, top_results.shape[0])
@@ -481,7 +586,7 @@ class PredictFromNGramsTest(unittest.TestCase):
         text = "Go on a romantic date at the"
         # with open("../word_stats_pkls/matrix_13686_df.pkl", 'rb') as f:
         #    matrix_df = pickle.load(f)
-        self.initialize_matrix_df()
+        self.load_real_matrix_df()
         tokens = bo.tokenize_string(text)
         start = time.time()
         result1 = prd.predict_from_word_vectors_matrix(tokens, self.matrix_df, self.en)
@@ -505,7 +610,7 @@ class PredictFromNGramsTest(unittest.TestCase):
         # text = "Bills game: Offense still struggling but the"
         # with open("../word_stats_pkls/matrix_13686_df.pkl", 'rb') as f:
         #    matrix_df = pickle.load(f)
-        self.initialize_matrix_df()
+        self.load_real_matrix_df()
         self.compare_predict_functions_one_phrase("Bills game: Offense still struggling but the", self.matrix_df)
         self.compare_predict_functions_one_phrase("Go on a romantic date at the", self.matrix_df)
 
@@ -525,6 +630,25 @@ class PredictFromNGramsTest(unittest.TestCase):
         print(f"{stop_matrix - start_matrix} seconds")
 
     def test_predict_from_ngrams_and_vectors(self):
+        pass
+        a = 'a'
+        print(a)
+        self.use_test_data()
+
+        # a phrase that is not in the prefix max
+        phrase = "go on a romantic date"
+        histograms = [self.four_grams_hist, self.five_grams_hist, self.six_grams_hist]
+        prefix_maps = [self.four_grams_prefix_map, self.five_grams_prefix_map, self.six_grams_prefix_map]
+        result = prd.predict(phrase, histograms, prefix_maps, self.matrix_df, self.en)
+
+        # a phrase that is in the prefix max
+        phrase = "may i say thanks for the"
+        histograms = [self.four_grams_hist, self.five_grams_hist, self.six_grams_hist]
+        prefix_maps = [self.four_grams_prefix_map, self.five_grams_prefix_map, self.six_grams_prefix_map]
+        prd.predict(phrase, histograms, prefix_maps, self.matrix_df, self.en)
+
+    def test_predict_from_ngrams_and_vectors_actual_data(self):
+    #def test_predict_from_ngrams_and_vectors(self):
         phrases = [
             #"a pound of bacon, a bouquet, and a case of",
             #"It would mean the",
@@ -537,20 +661,21 @@ class PredictFromNGramsTest(unittest.TestCase):
             "the good times and keep the faith during the",
             "If this isn't the cutest thing you've ever seen, then you must be",
         ]
-        self.load_n_grams()
-        self.initialize_matrix_df()
+        self.load_real_n_grams()
+        self.load_real_matrix_df()
+        self.load_real_prefix_maps()
         for phrase in phrases:
             print("\n\n----", phrase)
 
-            tokens = bo.tokenize_string(phrase)
+            # tokens = bo.tokenize_string(phrase)
             """prd.collect_n_grams_matches(phrase, [self.four_grams_hist, self.five_grams_hist, self.six_grams_hist])
             result = prd.predict_from_word_vectors(tokens, en_words, en.vocab, en, "NOUN")
             print(result)"""
             #prd.predict(tokens, [self.four_grams_hist, self.five_grams_hist, self.six_grams_hist],
             #            en_words, en.vocab, en, "NOUN")
-
-            prd.predict(tokens, [self.four_grams_hist, self.five_grams_hist, self.six_grams_hist],
-                        self.matrix_df, self.en)
+            histograms = [self.four_grams_hist, self.five_grams_hist, self.six_grams_hist]
+            prefix_maps = [self.four_grams_prefix_map, self.five_grams_prefix_map, self.six_grams_prefix_map]
+            prd.predict(phrase, histograms, prefix_maps, self.matrix_df, self.en)
 
 if __name__ == '__main__':
     unittest.main()
