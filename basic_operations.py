@@ -1,5 +1,6 @@
 import re
 import pandas as pd
+import numpy as np
 import time
 import constants
 import pickle
@@ -8,6 +9,13 @@ import pickle
 # Cleansing
 
 def cleanse(text):
+    """
+    Clean up the text a little by removing punctuation, extra spaces, new lines, etc.
+    This should be run after split_to_sentences(), tokenize_by_sentence() because I think it removes all the
+    punctuation you will need to split the text into sentences.
+    :param text:
+    :return:
+    """
     text = text.lower()
     text = text.replace("'", '')    # Remove apostrophes
     # text = re.sub('[^\w\s]', ' ', text)
@@ -23,6 +31,11 @@ def cleanse(text):
 # Tokenization
 
 def tokenize_string(sentence):
+    """
+    cleanse the string and tokenize to individual words
+    :param sentence: a string of text (in the context of this application, most likely an individual sentence)
+    :return: a list of strings
+    """
     sentence = cleanse(sentence)
     return sentence.split(' ')
 # TODO: Convert contractions to the "uncontracted" two words.  Ex "you'll" -> "you are".
@@ -30,14 +43,32 @@ def tokenize_string(sentence):
 
 
 def split_to_sentences(text):
+    """
+    Gets a bunch of text and returns the sentences as a list.  It attempts to split the text up into its component
+    sentences, using punctuation that typically ends a sentence (see constants.PUNCTUATION_REGEX, which at the moment is
+    '[.?!]').  Text that does not behave this way, for example when each line is intended to be independent,
+    will likely give an unexpected result.
+    :param text: regular text; for example the contents of a file of text
+    :return: a list, where each element in the list is a sentence
+    """
+    # TODO: A way to handle text that is broken up by lines (for example, poetry); maybe allow the call to specify
+    #  the regex.
     p = re.compile(constants.PUNCTUATION_REGEX)
     sentences = p.split(text)
     for i in range(len(sentences)):
         sentences[i] = sentences[i].strip()
+    if sentences[-1] == '':
+        sentences = sentences[:-1]
     return sentences
 
 
 def tokenize_by_sentence(text):
+    """
+    Tokenize the text, but group words in sentences together.  The input, and constraints on tokenization,
+    are the same as for split_to_sentences().
+    :param text: regular text; for example the contents of a file of text
+    :return: A list of lists.  Each list inside the overall list is the words in a given sentence.
+    """
     sentences = split_to_sentences(text)
     result = []
     for sentence in sentences:
@@ -50,6 +81,13 @@ def tokenize_by_sentence(text):
 # Statistics
 
 def find_word_stats(text):
+    """
+    Get statistics on word frequencies.  This tells you the word and how many times it occurred in the text.  There
+    are also columns for the fraction of total words that it represents, cumulative count and cumulative ratio of all
+    words, "cumulative" being if you count that word and all other words above it.
+    :param text:
+    :return: a DataFrame, sorted by most common words first
+    """
     tokens = tokenize_string(text)
     tokens_pd = pd.Series(tokens)
     token_hist = tokens_pd.value_counts()
@@ -61,6 +99,12 @@ def find_word_stats(text):
 
 
 def find_sentence_lengths_hist(list_of_sentences):
+    """
+    Find a histogram of all sentences lengths.  Could be useful in looking at the writing style of an author,
+    for example.
+    :param list_of_sentences:
+    :return: a pandas Series
+    """
     lengths = []
     for i in range(len(list_of_sentences)):
         lengths.append(len(list_of_sentences[i]))
@@ -197,6 +241,44 @@ def create_prefix_map(ngrams_hist):
     return prefix_map
 
 
+# Creating training data
+
+def get_random_sentences(sentences_as_list, how_many):
+    """
+    Get random sentences from a list of sentences.  Technically, all this function does, at least right now,
+    is one line, return np.random.choice(sentences_as_list, how_many, replace=False).  But that could change.
+    :param sentences_as_list:
+    :param how_many:
+    :return:
+    """
+    if how_many > len(sentences_as_list):
+        how_many = len(sentences_as_list)
+    # TODO: The line below returns an np array.  Should it return a regular list?
+    return np.random.choice(sentences_as_list, how_many, replace=False)
+
+
+def get_training_sentences(text, how_many):
+    """
+    Get a random subset of sentences from the text for training.  Although technically it would work for some purpose other than training.
+    :param text: The text (such as the contents of a text file) to get sentences from.
+    :param how_many: number of sentences to get
+    :return: a list of sentences
+    """
+    sentences = split_to_sentences(text)
+    training_sentences = get_random_sentences(sentences, how_many)
+    return training_sentences
+
+
+def get_training_sentences_from_file(full_path, how_many, random_seed=37):
+
+    with open(full_path, 'r', encoding='UTF-8') as f:
+        text = f.read()
+
+    np.random.seed(random_seed)
+    training_sentences = get_training_sentences(text, how_many)
+    return training_sentences
+
+
 if __name__ == "__main__":
 
     file_name = '../../courses/data_science_capstone/en_US/twitter_train.txt'
@@ -206,4 +288,9 @@ if __name__ == "__main__":
     file_name = '../../courses/data_science_capstone/en_US/en_US.twitter.txt'
     #file_name = '../../courses/data_science_capstone/en_US/en_US.news.txt'
 
-    process_one_file(file_name)
+    # process_one_file(file_name)
+
+    sentences = get_training_sentences_from_file(file_name, 1000)
+    output_file = "training_sentences.pkl"
+    with open(output_file, 'wb') as f:
+        pickle.dump(sentences, f)

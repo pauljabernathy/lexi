@@ -1,5 +1,6 @@
 import unittest
 from basic_operations import *
+import pickle
 
 # TODO:  For each of these, test some potentially problematic input.
 # Empty strings, anything else.  For the coursera project, each file will have
@@ -67,7 +68,7 @@ class TokenizeTest(unittest.TestCase):
         sentences = split_to_sentences(text)
         # print(sentences)
         self.assertEquals(["One sentence", "Two sentences", "To be or not to be", "Whatever",
-                          "The problem is that I don't even know what a sentence is", ''], sentences)
+                          "The problem is that I don't even know what a sentence is"], sentences)
         # TODO:  might should have that last item be removed.  But that would involve going through and removing all
         # blank items, because they could be at places other than the very end.
 
@@ -236,6 +237,45 @@ class PrefixMapTest(unittest.TestCase):
         six_gram_prefix_map = create_prefix_map(six_gram_hist)
         with open("../word_stats_pkls/six_grams_prefix_map.pkl", 'wb') as f:
             pickle.dump(six_gram_prefix_map, f)
+
+
+class TrainingSetTest(unittest.TestCase):
+
+    def test_get_random_sentences(self):
+        np.random.seed(16)  # You must set the seed for the unit test to work.
+        # The function should work equally well with numbers or strings.
+        s = [i for i in range(50)]
+        result = get_random_sentences(s, 10)
+        exp_result = [ 3, 34, 25, 36, 20, 23, 35, 21, 40, 39]
+        self.assertTrue((exp_result == result).all())
+
+        # With the same values as strings
+        np.random.seed(16)
+        s = [str(i) for i in range(50)]
+        result = get_random_sentences(s, 10)
+        exp_result = [ '3', '34', '25', '36', '20', '23', '35', '21', '40', '39']
+        self.assertTrue((exp_result == result).all())
+
+        np.random.seed(16)
+        result_50 = get_random_sentences(s, 51)
+
+        # Now try trying to get too many sentences
+        np.random.seed(16)
+        result_51 = get_random_sentences(s, 51)
+        # The results for 50 and 51 should be the same.
+        self.assertTrue((result_50 == result_51).all())
+
+        np.random.seed(16)
+        result_5127 = get_random_sentences(s, 5127)
+        self.assertTrue((result_50 == result_5127).all())
+
+    def test_get_training_sentences(self):
+        text = "0. 1. 2. 3. 4. 5. 6. 7. 8. 9. 10. 11. 12. 13. 14. 15. 16. 17. 18. 19. 20. 21. 22. 23. 24. 25. 26. 27. 28. 29. 30. 31. 32. 33. 34. 35. 36. 37. 38. 39. 40. 41. 42. 43. 44. 45. 46. 47. 48. 49."
+        np.random.seed(16)
+        result = get_training_sentences(text, 10)
+        exp_result = [ '3', '34', '25', '36', '20', '23', '35', '21', '40', '39']
+        self.assertTrue((exp_result == result).all())
+
 
 if __name__ == '__main__':
     unittest.main()
