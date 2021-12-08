@@ -269,12 +269,58 @@ class TrainingSetTest(unittest.TestCase):
         result_5127 = get_random_sentences(s, 5127)
         self.assertTrue((result_50 == result_5127).all())
 
+        # now test for checking the word length
+        # First, try with 0 length; should be the same as before
+        s = [((str(i) + ' ') * i).strip() for i in range(50)]
+        s = [(str(i) + ' ') * i for i in range(50)]
+        min_length = 0
+        np.random.seed(16)
+        result = get_random_sentences(s, 10, min_length)
+        self.assertEqual('3 3 3 ', result[0])
+        self.assertEqual("34 " * 34, result[1])
+        all_indices = range(len(s))
+        np.random.seed(16)
+        shuffled_indices = np.random.choice(all_indices, size=len(s), replace=False)
+        shuffled_str = []
+        for i in range(len(shuffled_indices)):
+            shuffled_str.append((str(shuffled_indices[i]) + " ") * shuffled_indices[i])
+        # self.assertEqual(shuffled_str[:10], list(result[:10])) This is equivalent to the line below.
+        self.assertTrue((shuffled_str[:10] == result[:10]).all())
+
+        # next, another length
+        np.random.seed(16)
+        min_length = 17
+        how_many=10
+        result = get_random_sentences(s, how_many=how_many, min_num_words=min_length)
+        exp_result = [x for x in shuffled_str if len(x.split(" ")) >= min_length][:how_many]
+        print(exp_result)
+        self.assertTrue((exp_result == result).all())
+
     def test_get_training_sentences(self):
         text = "0. 1. 2. 3. 4. 5. 6. 7. 8. 9. 10. 11. 12. 13. 14. 15. 16. 17. 18. 19. 20. 21. 22. 23. 24. 25. 26. 27. 28. 29. 30. 31. 32. 33. 34. 35. 36. 37. 38. 39. 40. 41. 42. 43. 44. 45. 46. 47. 48. 49."
         np.random.seed(16)
         result = get_training_sentences(text, 10)
         exp_result = [ '3', '34', '25', '36', '20', '23', '35', '21', '40', '39']
         self.assertTrue((exp_result == result).all())
+
+    # now from an actual file
+    def test_get_training_sentences_from_file(self):
+        file_name = "../corpus/moby_dick.txt"
+        #with open(file_name, 'r') as f:
+        #    text = f.read()
+        n = 1000
+        result = get_training_sentences_from_file(file_name, n)
+        self.assertEqual(n, len(result))
+        for sentence in result:
+            self.assertTrue(sentence == sentence.lower())
+            self.assertTrue(sentence == sentence.replace(".", ""))
+
+        # With a minimum number of words
+        result = get_training_sentences_from_file(file_name, how_many=n, min_num_words=6)
+        self.assertEqual(n, len(result))
+        for sentence in result:
+            self.assertTrue(sentence == sentence.lower())
+            self.assertTrue(sentence == sentence.replace(".", ""))
 
 
 if __name__ == '__main__':

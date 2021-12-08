@@ -224,11 +224,21 @@ def process_one_file(file_name):
 
 
 def split_prefix(text):
+    """
+    get all the words in the sentence except the last
+    :param text:
+    :return:
+    """
     tokens = text.split(" ")
     return " ".join(tokens[:(len(tokens) - 1)])
 
 
 def create_prefix_map(ngrams_hist):
+    """
+    Create a Dict object that maps the prefix to all indices in the input histogram where that prefix occurs
+    :param ngrams_hist: a DataFrame
+    :return: a dictionary
+    """
     ngrams_hist['prefix'] = ngrams_hist.gram.apply(split_prefix)
     ngrams_hist['target'] = ngrams_hist.gram.apply(lambda text: text.split(" ")[-1])
     prefix_map = {}
@@ -243,7 +253,7 @@ def create_prefix_map(ngrams_hist):
 
 # Creating training data
 
-def get_random_sentences(sentences_as_list, how_many):
+def get_random_sentences(sentences_as_list, how_many, min_num_words=None):
     """
     Get random sentences from a list of sentences.  Technically, all this function does, at least right now,
     is one line, return np.random.choice(sentences_as_list, how_many, replace=False).  But that could change.
@@ -254,29 +264,77 @@ def get_random_sentences(sentences_as_list, how_many):
     if how_many > len(sentences_as_list):
         how_many = len(sentences_as_list)
     # TODO: The line below returns an np array.  Should it return a regular list?
-    return np.random.choice(sentences_as_list, how_many, replace=False)
+    # return np.random.choice(sentences_as_list, how_many, replace=False)
+    # To test for minimum number of words, let's shuffle the indices first, then, if necessary, test each sentence at
+    # the random index to see if it is long enough.
+    all_indices = range(len(sentences_as_list))
+    shuffled_indices = np.random.choice(all_indices, size=len(sentences_as_list), replace=False)
+    if min_num_words is None:
+        indices_to_use = shuffled_indices[:how_many]
+    else:
+        indices_to_use = []
+        for i in shuffled_indices:
+            if len(sentences_as_list[i].split(" ")) >= min_num_words:
+                indices_to_use.append(i)
+            if len(indices_to_use) >= how_many:
+                break
+    return np.array(sentences_as_list)[indices_to_use]
 
 
-def get_training_sentences(text, how_many):
+def get_training_sentences(text, how_many, min_num_words=None):
     """
     Get a random subset of sentences from the text for training.  Although technically it would work for some purpose other than training.
     :param text: The text (such as the contents of a text file) to get sentences from.
     :param how_many: number of sentences to get
     :return: a list of sentences
     """
+    #text = cleanse(text)
     sentences = split_to_sentences(text)
-    training_sentences = get_random_sentences(sentences, how_many)
+    training_sentences = get_random_sentences(sentences, how_many, min_num_words)
+    for i in range(len(training_sentences)):
+        training_sentences[i] = cleanse(training_sentences[i])
     return training_sentences
 
 
-def get_training_sentences_from_file(full_path, how_many, random_seed=37):
+def get_training_sentences_from_file(full_path, how_many, random_seed=37, min_num_words=None):
+    """
+    Get a random subset of sentences form the specifies file.
+    :param full_path: the directory and name of the file
+    :param how_many: the number of sentences to choose
+    :param random_seed: optional random seed for consistent results
+    :param min_num_words: the minimum number of words a sentence must be to be included; if not specified, sentences of
+    any length are allowed
+    :return: a list of sentences taken from the file
+    """
 
+    # might need to detect encoding rather than just assume utf-8
     with open(full_path, 'r', encoding='UTF-8') as f:
         text = f.read()
 
     np.random.seed(random_seed)
-    training_sentences = get_training_sentences(text, how_many)
+    training_sentences = get_training_sentences(text, how_many, min_num_words=min_num_words)
     return training_sentences
+
+
+def get_training_df(sentences_list):
+    """
+    converts the list of sentences into a DataFrame
+    :param sentences_list: a liste of sentences
+    :return: a DataFrame; the columns are "source" containing all but the last word of the sentence, and "target"
+    containing the last word
+    """
+    # TODO:  I notice that uses the term "source" where earlier it uses "prefix" as in get_prefix_map().
+    sources = []
+    targets = []
+    for sentence in sentences_list:
+        words = sentence.split(" ")
+        target = words[-1]
+        # source = " ".join(words[0:(len(words) - 1)])
+        source = split_prefix(sentence)
+        sources.append(source)
+        targets.append(target)
+    training_df = pd.DataFrame({'source': sources, 'target': targets})
+    return training_df
 
 
 if __name__ == "__main__":
@@ -290,7 +348,28 @@ if __name__ == "__main__":
 
     # process_one_file(file_name)
 
-    sentences = get_training_sentences_from_file(file_name, 1000)
     output_file = "training_sentences.pkl"
+    #'''
+    sentences = get_training_sentences_from_file(file_name, 1000, min_num_words=6)
     with open(output_file, 'wb') as f:
-        pickle.dump(sentences, f)
+       pickle.dump(sentences, f)
+    #    '''
+
+    #with open("training_sentences.pkl", 'rb') as f:
+    #    sentences = pickle.load(f)
+    training_df = get_training_df(sentences)
+    print(training_df.head())
+
+    # Save the training_df.  Both ways, and see which file is bigger.
+    with open("training_df.pkl", 'wb') as f:
+        pickle.dump(training_df, f)
+    training_df.to_csv("training_df.csv", index=False)
+    # Strange.  I generated training sentences and the data frame from the full twitter file.  The pkl df file was
+    # 140640 KB.  The csv df was 134748 KB.  The pkl of the sentences list was almost 5 Gigs.  The full twitter file
+    # itself is only 163189 KB.
+    # That was with a bug where it used all the sentences.
+    # 4294463 total sentences in the twitter file
+    # With only 1000 sentences, the sentences list pkl is 2516 kb, training_df.pkl is 72 kb, and trainind_df.csv is
+    # 68 kb.
+
+
