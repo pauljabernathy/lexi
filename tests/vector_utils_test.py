@@ -17,6 +17,7 @@ class CosineSimilarityTest(unittest.TestCase):
 class WordVectorsTest(unittest.TestCase):
 
     def setUp(self):
+        print("->setup")
         self.en = spacy.load('en_core_web_md')
         vocab = list(self.en.vocab.strings)
         self.en_words = set(v.lower() for v in vocab)
@@ -24,12 +25,15 @@ class WordVectorsTest(unittest.TestCase):
         self.es = spacy.load('es_core_news_md')
         vocab = list(self.es.vocab.strings)
         self.es_words = set(v.lower() for v in vocab)
-        one = 1
+        print("<-setup")
 
+    @unittest.skip("time")
     def test_closest_word_vector_en(self):
+        print("->test_closest_word_vector_en")
         #df1 = vu.find_closest_word_vectors(self.en.vocab['afghanistan'].vector, self.en_words, self.en.vocab)#.head(37)
         #df2 = vu.find_closest_word_vectors(self.en.vocab['tiger'].vector, self.en_words, self.en.vocab)#.head(37)
         #df3 = vu.find_closest_word_vectors(self.en.vocab['cat'].vector, self.en_words, self.en.vocab)#.head(37)
+        '''
         df1 = vu.find_closest_word_vectors("i'll", self.en_words, self.en)
         print(df1)
         df1 = vu.find_closest_word_vectors('afghanistan', self.en_words, self.en)#.head(37)
@@ -38,8 +42,10 @@ class WordVectorsTest(unittest.TestCase):
         print(df1.head(37))
         print(df2.head(37))
         print(df3.head(37))
+        '''
+        pass
 
-    def test_closest_word_vector_en(self):
+    #def test_closest_word_vector_en(self):
         n = 25
         df1 = vu.find_closest_word_vectors("i'll", self.en_words, self.en)
         print(df1.head(n))
@@ -53,21 +59,23 @@ class WordVectorsTest(unittest.TestCase):
         print(df5.head(n))
         df6 = vu.find_closest_word_vectors("i'm", self.en_words, self.en)
         print(df6.head(n))
+        print("<-test_closest_word_vector_en")
 
+    @unittest.skip("")
     def test_closest_word_vector_es(self):
         print("\n\n----")
         #df1 = vu.find_closest_word_vectors(self.en.vocab['afghanistan'].vector, self.es_words, self.es.vocab)#.head(37)
         #df2 = vu.find_closest_word_vectors(self.en.vocab['tigre'].vector, self.es_words, self.es.vocab)#.head(37)
         #df3 = vu.find_closest_word_vectors(self.en.vocab['gato'].vector, self.es_words, self.es.vocab)#.head(37)
 
-        df1 = vu.find_closest_word_vectors('afghanistan', self.es_words, self.es.vocab)#.head(37)
+        df1 = vu.find_closest_word_vectors('afghanistan', self.es_words, self.es)#.head(37)
         print(df1.head(37))
         #print(df2.head(37))
         #print(df3.head(37))
 
     def test_closest_word_vector_series(self):
         print("\n\n----")
-        df1 = vu.find_closest_word_vectors('afghanistan', self.en_words, self.en.vocab)#.head(37)
+        df1 = vu.find_closest_word_vectors('afghanistan', self.en_words, self.en)#.head(37)
 
         df2 = vu.find_closest_word_vectors_series('afghanistan', self.en_words, self.en.vocab)
         print(df1.head())
@@ -82,7 +90,8 @@ class WordVectorsTest(unittest.TestCase):
             word_docs = pickle.load(f)
         words_list = [w.text for w in word_docs]
         matrix_df = pd.DataFrame(data=matrix, index=words_list, columns=words_list)'''
-        with open("../word_stats_pkls/matrix_13686_df.pkl", 'rb') as f:
+        source = "news"
+        with open(f"../word_stats_pkls/{source}_matrix_df.pkl", 'rb') as f:
             matrix_df = pickle.load(f)
         result1 = vu.find_closest_word_vectors_from_matrix('afghanistan', matrix_df)
         print(result1.iloc[:17])
@@ -97,8 +106,8 @@ class WordVectorsTest(unittest.TestCase):
 
         # Look for a word that is not there.
         empty_result = vu.find_closest_word_vectors_from_matrix("weasel", matrix_df)
-        self.assertTrue(([constants.WORD, constants.SIMILARITY] == empty_result.columns).all())
-        self.assertEqual((0, 2), empty_result.shape)
+        self.assertTrue(([constants.WORD, constants.POS, constants.SIMILARITY] == empty_result.columns).all())
+        self.assertEqual((0, 3), empty_result.shape)
 
         word_list = ['afghanistan', 'tiger', 'car', 'chef', 'skinny', 'weasel', 'wood', 'mechanic']
         start = time.time()
@@ -107,6 +116,7 @@ class WordVectorsTest(unittest.TestCase):
         stop = time.time()
         print(stop - start)
 
+    @unittest.skip("")
     def test_find_closest_word_vector_matrix_perf(self):
         with open("../word_stats_pkls/twitter_matrix_13686_df.pkl", 'rb') as f:
             matrix_df = pickle.load(f)
@@ -119,7 +129,7 @@ class WordVectorsTest(unittest.TestCase):
         stop = time.time()
         print(f"{stop - start} seconds")
 
-
+    @unittest.skip("move to a perf test file")
     def test_perf_comparison_word_vectors(self):
         word_list = ['afghanistan', 'tiger', 'car', 'chef', 'skinny', 'weasel', 'wood', 'mechanic']
         word_list = ['afghanistan', 'tiger', 'car']
@@ -130,7 +140,7 @@ class WordVectorsTest(unittest.TestCase):
         matrix_times = []
         for word in word_list:
             for_start = time.time()
-            vu.find_closest_word_vectors(word, self.en_words, self.en.vocab)
+            vu.find_closest_word_vectors(word, self.en_words, self.en)
             for_stop = time.time()
             for_time = for_stop - for_start
             for_times.append(for_time)
@@ -162,7 +172,7 @@ class WordVectorsTest(unittest.TestCase):
     def test_make_word_similarity_matrix(self):
         stats = pd.read_csv("../en_US_twitter_stats.csv")
         stats.columns = ['word', 'count', 'fraction', 'cum_sum', 'cum_frac']
-        with open("../word_stats_pkls/word_docs_top_13686.pkl", 'rb') as f:
+        with open("../word_stats_pkls/twitter_word_docs_top_13686.pkl", 'rb') as f:
             spacy_words = pickle.load(f)
         start = time.time()
         n = 100
@@ -210,6 +220,7 @@ class WordVectorsTest(unittest.TestCase):
         self.assertEqual((9, 10), df.shape)
         self.assertTrue((df.pos.values == ['NOUN', 'NOUN', 'NOUN', 'VERB', 'VERB', 'VERB', 'ADJ', 'ADJ', 'ADJ']).all())
 
+    @unittest.skip('only make this matrix ad hoc')
     def test_actually_make_word_similarity_df(self):
         matrix_file_fp = "../word_stats_pkls/twitter_matrix_13686.pkl"
         matrix_file_fp = "../word_stats_pkls/news_matrix_17355.pkl"
@@ -232,6 +243,7 @@ class WordVectorsTest(unittest.TestCase):
         if not hasattr(self, "twitter_matrix_df") or not self.matrix_df:
             with open("../word_stats_pkls/twitter_matrix_13686_df.pkl", 'rb') as f:
                 self.matrix_df = pickle.load(f)
+
 
 if __name__ == '__main__':
     unittest.main()

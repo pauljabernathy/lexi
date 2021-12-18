@@ -344,11 +344,20 @@ if __name__ == "__main__":
     # file_name = '../../courses/data_science_capstone/en_US/twitter_test_1.txt'
     file_name = '../../courses/data_science_capstone/en_US/twitter_sample.txt'
     file_name = '../../courses/data_science_capstone/en_US/en_US.twitter.txt'
-    #file_name = '../../courses/data_science_capstone/en_US/en_US.news.txt'
+    file_name = '../../courses/data_science_capstone/en_US/en_US.news.txt'
+
+    # OK, stop with the constant swapping out of names and changing everything.  Make it to where you can change the
+    # word "news", "twitter" etc. and all the associated file names change.  Will want to do the same where it is
+    # used in prediction and the unit tests.
+    # stem = '../../courses/data_science_capstone/en_US/en_US.news.txt'
+    source = "news"
+    file_name = f"../../courses/data_science_capstone/en_US/en_US.{source}.txt"
 
     # process_one_file(file_name)
 
-    output_file = "training_sentences.pkl"
+    # output_file = "word_stats_pkls/training_sentences_twitter.pkl"
+    output_file = f"word_stats_pkls/training_sentences_{source}.pkl"
+
     #'''
     sentences = get_training_sentences_from_file(file_name, 1000, min_num_words=6)
     with open(output_file, 'wb') as f:
@@ -361,9 +370,10 @@ if __name__ == "__main__":
     print(training_df.head())
 
     # Save the training_df.  Both ways, and see which file is bigger.
-    with open("training_df.pkl", 'wb') as f:
+    training_df_file_stem = f"word_stats_pkls/training_df_{source}"
+    with open(training_df_file_stem + ".pkl", 'wb') as f:
         pickle.dump(training_df, f)
-    training_df.to_csv("training_df.csv", index=False)
+    training_df.to_csv(training_df_file_stem + ".csv", index=False)
     # Strange.  I generated training sentences and the data frame from the full twitter file.  The pkl df file was
     # 140640 KB.  The csv df was 134748 KB.  The pkl of the sentences list was almost 5 Gigs.  The full twitter file
     # itself is only 163189 KB.

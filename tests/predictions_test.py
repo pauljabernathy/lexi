@@ -11,6 +11,7 @@ import timeit
 
 PKLS_DIR = "../word_stats_pkls/"
 
+
 class PerfTest(unittest.TestCase):
 
     def test_list_iteration_vs_series_apply(self):
@@ -126,6 +127,7 @@ class PerfTest(unittest.TestCase):
             pass
             #self.six_grams_hist = pd.read_csv("../en_US.twitter.txt_6_grams.csv")
 
+    @unittest.skip("move to a perf file file")
     def test_n_gram_matches_times(self):
         self.load_n_grams()
         # list_of_hists = [self.four_grams_hist, self.five_grams_hist, self.six_grams_hist]
@@ -229,7 +231,7 @@ class PerfTest(unittest.TestCase):
         with open(PKLS_DIR + "four_grams_prefix_df.pkl", "rb") as f:
             prefix_df = pickle.load(f)
 
-        with open(PKLS_DIR + "four_grams_prefix_map.pkl", "rb") as f:
+        with open(PKLS_DIR + "four_grams_prefix_map_twitter.pkl", "rb") as f:
             prefix_map = pickle.load(f)
 
         map_partial = partial(self.get_from_map, map=prefix_map, search_term="thanks for the")
@@ -258,7 +260,8 @@ class PerfTest(unittest.TestCase):
         :return:
         """
         self.load_n_grams()
-        with open(PKLS_DIR + "four_grams_prefix_map.pkl", "rb") as f:
+        source = "twitter"
+        with open(PKLS_DIR + f"four_grams_prefix_map_{source}.pkl", "rb") as f:
             prefix_map = pickle.load(f)
 
         text = "thanks for the"
@@ -355,33 +358,35 @@ class PredictFromNGramsTest(unittest.TestCase):
             self.test_prefix_maps.append(current_prefix_map)
         return self.test_prefix_maps
 
-    def load_real_n_grams(self):
+    def load_real_n_grams(self, source="twitter"):
         if not hasattr(self, "four_grams_hist") or self.four_grams_hist is None:
-            self.four_grams_hist = pd.read_csv("../en_US.twitter.txt_4_grams.csv")
+            self.four_grams_hist = pd.read_csv(f"../en_US.{source}.txt_4_grams.csv")
         if not hasattr(self, "five_grams_hist") or self.five_grams_hist is None:
-            self.five_grams_hist = pd.read_csv("../en_US.twitter.txt_5_grams.csv")
+            self.five_grams_hist = pd.read_csv(f"../en_US.{source}.txt_5_grams.csv")
         if not hasattr(self, "six_grams_hist") or self.six_grams_hist is None:
-            self.six_grams_hist = pd.read_csv("../en_US.twitter.txt_6_grams.csv")
+            self.six_grams_hist = pd.read_csv(f"../en_US.{source}.txt_6_grams.csv")
 
-    def load_real_matrix_df(self):
-        matrix_file_fp = "../word_stats_pkls/matrix_13686_df.pkl"
-        matrix_file_fp = "../word_stats_pkls/news_matrix_df.pkl"
+    def load_real_matrix_df(self, source="twitter"):
+        matrix_file_fp = f"../word_stats_pkls/matrix_13686_df.pkl"
+        matrix_file_fp = f"../word_stats_pkls/news_matrix_df.pkl"
+        matrix_file_fp = f"../word_stats_pkls/{source}_matrix_df.pkl"
         if not hasattr(self, "matrix_df") or not self.matrix_df:
             with open(matrix_file_fp, 'rb') as f:
                 self.matrix_df = pickle.load(f)
         return self.matrix_df
 
-    def load_real_prefix_maps(self):
+    def load_real_prefix_maps(self, source="twitter"):
+        #source = "news"
         if not hasattr(self, "four_grams_prefix_map") or self.four_grams_prefix_map is None:
-            with open(PKLS_DIR + "four_grams_prefix_map.pkl", "rb") as f:
+            with open(PKLS_DIR + f"four_grams_prefix_map_{source}.pkl", "rb") as f:
                 self.four_grams_prefix_map = pickle.load(f)
 
         if not hasattr(self, "five_grams_prefix_map") or self.five_grams_prefix_map is None:
-            with open(PKLS_DIR + "five_grams_prefix_map.pkl", "rb") as f:
+            with open(PKLS_DIR + f"five_grams_prefix_map_{source}.pkl", "rb") as f:
                 self.five_grams_prefix_map = pickle.load(f)
 
         if not hasattr(self, "six_grams_prefix_map") or self.six_grams_prefix_map is None:
-            with open(PKLS_DIR + "six_grams_prefix_map.pkl", "rb") as f:
+            with open(PKLS_DIR + f"six_grams_prefix_map_{source}.pkl", "rb") as f:
                 self.six_grams_prefix_map = pickle.load(f)
         return self.four_grams_prefix_map, self.five_grams_prefix_map, self.six_grams_prefix_map
 
@@ -456,7 +461,7 @@ class PredictFromNGramsTest(unittest.TestCase):
         # "real word" data below.
 
         self.load_real_n_grams()
-        with open(PKLS_DIR + "four_grams_prefix_map.pkl", "rb") as f:
+        with open(PKLS_DIR + "four_grams_prefix_map_twitter.pkl", "rb") as f:
             prefix_map = pickle.load(f)
 
         text = "thanks for the"
@@ -491,7 +496,7 @@ class PredictFromNGramsTest(unittest.TestCase):
         #self.load_real_n_grams()
         list_of_histograms = self.load_test_n_grams()
 
-        with open(PKLS_DIR + "four_grams_prefix_map.pkl", "rb") as f:
+        with open(PKLS_DIR + "four_grams_prefix_map_twitter.pkl", "rb") as f:
             prefix_map = pickle.load(f)
 
         text = "thanks for the"
@@ -533,11 +538,12 @@ class PredictFromNGramsTest(unittest.TestCase):
         self.load_real_matrix_df()
         tokens = ['tiger', 'roman']
         result = prd.collect_word_vector_associations(tokens, self.matrix_df)
-        self.assertEqual(7, result.shape[1])
+        self.assertEqual(8, result.shape[1])
         self.assertTrue("word" in list(result.columns))
         self.assertTrue("tiger" in list(result.columns))
         self.assertTrue("roman" in list(result.columns))
-        self.assertEqual(self.matrix_df.shape[0], result.shape[0])
+        self.assertEqual((self.matrix_df.shape[0] - 2), result.shape[0])
+        # It removes the word you are searching for and any other match of 1.0 similarity, so the result size is 2 less.
 
     def test_use_collect_word_vector_associations(self):
         phrases = [
@@ -567,6 +573,13 @@ class PredictFromNGramsTest(unittest.TestCase):
         self.assertEqual(17, top_results.shape[0])
         self.assertEqual(wv.shape[1], top_results.shape[1])
 
+    def test_get_top_results_blank_result(self):
+        self.load_real_matrix_df()
+        tokens = ['i', 'am', 'not', 'there', 'i', 'do', 'not']
+        wv = prd.collect_word_vector_associations(tokens, self.matrix_df)
+        top_results = prd.get_top_results(wv, self.en, 10, pos="NOUN")
+
+    @unittest.skip("takes a long time and this function is deprecated anyway")
     def test_predict_from_word_vectors(self):
         text = "Bills game: Offense still struggling but the"
         text = "Go on a romantic date at the"
@@ -578,14 +591,16 @@ class PredictFromNGramsTest(unittest.TestCase):
         # en = spacy.load('en_core_web_md')
         # vocab = list(en.vocab.strings)
         # en_words = set(v.lower() for v in vocab)
-        result = prd.predict_from_word_vectors(tokens, self.en_words, self.en.vocab, self.en, "NOUN")
+        result = prd.predict_from_word_vectors(tokens, self.en_words, self.en, self.en, "NOUN")
         print(result)
+        # TODO:  Actually test something.
 
     def test_predict_from_word_vectors_matrix(self):
         text = "Bills game: Offense still struggling but the"
         text = "Go on a romantic date at the"
         # with open("../word_stats_pkls/matrix_13686_df.pkl", 'rb') as f:
         #    matrix_df = pickle.load(f)
+
         self.load_real_matrix_df()
         tokens = bo.tokenize_string(text)
         start = time.time()
@@ -606,6 +621,21 @@ class PredictFromNGramsTest(unittest.TestCase):
         print(result2)
         print(f"{stop - start} seconds")
 
+        text = "lachs was one of the few physicians who would go to visit protective"
+        tokens = bo.tokenize_string(text)
+        start = time.time()
+        result3 = prd.predict_from_word_vectors_matrix(tokens, self.matrix_df, self.en, top_number=17)
+        stop = time.time()
+        print(f"{stop - start} seconds")
+
+        tokens = ['i', 'am', 'not', 'there', 'i', 'do', 'not']
+        target = "sleep" # from the training set
+        start = time.time()
+        result4 = prd.predict_from_word_vectors_matrix(tokens, self.matrix_df, self.en, top_number=17)
+        stop = time.time()
+        print(f"{stop - start} seconds")
+
+    @unittest.skip("In the past they gave the same result, and this takes too long.")
     def test_compare_predict_functions(self):
         # text = "Bills game: Offense still struggling but the"
         # with open("../word_stats_pkls/matrix_13686_df.pkl", 'rb') as f:
@@ -618,7 +648,7 @@ class PredictFromNGramsTest(unittest.TestCase):
         print(f"comparing {text}")
         tokens = bo.tokenize_string(text)
         start1 = time.time()
-        result1 = prd.predict_from_word_vectors(tokens, self.en_words, self.en.vocab, self.en, "NOUN")
+        result1 = prd.predict_from_word_vectors(tokens, self.en_words, self.en, self.en, "NOUN")
         stop1 = time.time()
         print(result1)
         print(f"{stop1 - start1} seconds")
@@ -675,7 +705,9 @@ class PredictFromNGramsTest(unittest.TestCase):
             #            en_words, en.vocab, en, "NOUN")
             histograms = [self.four_grams_hist, self.five_grams_hist, self.six_grams_hist]
             prefix_maps = [self.four_grams_prefix_map, self.five_grams_prefix_map, self.six_grams_prefix_map]
+            print(phrase)
             prd.predict(phrase, histograms, prefix_maps, self.matrix_df, self.en)
+
 
 if __name__ == '__main__':
     unittest.main()

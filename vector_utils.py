@@ -42,15 +42,20 @@ def find_closest_word_vectors_series(word, word_set, spacy_vocab):
 
 
 def find_closest_word_vectors_from_matrix(word, similarity_matrix):
-    df = pd.DataFrame(columns=[constants.WORD, constants.SIMILARITY])
+    # df = pd.DataFrame(columns=[constants.WORD, constants.SIMILARITY])
+    s2 = pd.DataFrame(columns=[constants.WORD, constants.POS, constants.SIMILARITY])
     if word in similarity_matrix:
-        #return similarity_matrix[word].sort_values(ascending=False)
         s = similarity_matrix[word].sort_values(ascending=False)
-        df[constants.WORD] = s.index
-        df[constants.SIMILARITY] = s.values
+        # df[constants.WORD] = s.index
+        # df[constants.SIMILARITY] = s.values
+        s2 = similarity_matrix[[word, constants.POS]].sort_values(word, ascending=False)
+        s2[constants.WORD] = s2.index
+        s2.index = range(s2.shape[0])
+        s2.columns = [constants.SIMILARITY, constants.POS, constants.WORD]
+        s2 = s2[[constants.WORD, constants.POS, constants.SIMILARITY]]
     else:
         pass
-    return df
+    return s2
 
 
 def make_word_similarity_matrix(words, nlp, matrix_size, spacy_words=None):
@@ -91,7 +96,7 @@ def make_word_similarity_df_from_matrix(matrix, word_list, nlp):
     df = pd.DataFrame(data=matrix, columns=word_list, index=word_list)
     s = pd.Series(df.index).apply(lambda w: nlp(w)[0].pos_)
     s.index = df.index
-    df['pos'] = s
+    df[constants.POS] = s
     return df
 
 

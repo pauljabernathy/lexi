@@ -223,20 +223,32 @@ class PrefixMapTest(unittest.TestCase):
 
     @unittest.skip("comment this out to create the prefix map")
     def test_create_an_actual_prefix_map(self):
-        four_gram_hist = pd.read_csv('../en_US.twitter.txt_4_grams.csv')
+
+        source = "news"
+        three_gram_hist = pd.read_csv(f'../en_US.{source}.txt_3_grams.csv')
+        three_gram_prefix_map = create_prefix_map(three_gram_hist)
+        with open(f"../word_stats_pkls/three_grams_prefix_map_{source}.pkl", 'wb') as f:
+            pickle.dump(three_gram_prefix_map, f)
+
+        '''
+        # four_gram_hist = pd.read_csv('../en_US.twitter.txt_4_grams.csv')
+        four_gram_hist = pd.read_csv(f'../en_US.{source}.txt_4_grams.csv')
         four_gram_prefix_map = create_prefix_map(four_gram_hist)
-        with open("../word_stats_pkls/four_grams_prefix_map.pkl", 'wb') as f:
+        with open(f"../word_stats_pkls/four_grams_prefix_map_{source}.pkl", 'wb') as f:
             pickle.dump(four_gram_prefix_map, f)
 
-        five_gram_hist = pd.read_csv('../en_US.twitter.txt_5_grams.csv')
+        # five_gram_hist = pd.read_csv('../en_US.twitter.txt_5_grams.csv')
+        five_gram_hist = pd.read_csv(f'../en_US.{source}.txt_5_grams.csv')
         five_gram_prefix_map = create_prefix_map(five_gram_hist)
-        with open("../word_stats_pkls/five_grams_prefix_map.pkl", 'wb') as f:
+        with open(f"../word_stats_pkls/five_grams_prefix_map_{source}.pkl", 'wb') as f:
             pickle.dump(five_gram_prefix_map, f)
 
-        six_gram_hist = pd.read_csv('../en_US.twitter.txt_6_grams.csv')
+        # six_gram_hist = pd.read_csv('../en_US.twitter.txt_6_grams.csv')
+        six_gram_hist = pd.read_csv(f'../en_US.{source}.txt_6_grams.csv')
         six_gram_prefix_map = create_prefix_map(six_gram_hist)
-        with open("../word_stats_pkls/six_grams_prefix_map.pkl", 'wb') as f:
+        with open(f"../word_stats_pkls/six_grams_prefix_map_{source}.pkl", 'wb') as f:
             pickle.dump(six_gram_prefix_map, f)
+        '''
 
 
 class TrainingSetTest(unittest.TestCase):

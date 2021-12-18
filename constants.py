@@ -10,6 +10,7 @@ N_GRAM_SEPARATOR = " "       # For when representing n grams as a string of seve
 
 WORD = "word"
 SIMILARITY = "similarity"
+POS = 'pos'
 
 DEFAULT_NGRAMS_THRESHOLD = 10
 DEFAULT_TOP_NGRAMS = 25
