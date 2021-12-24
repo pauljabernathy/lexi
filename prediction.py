@@ -268,22 +268,38 @@ def predict_from_word_vectors_matrix(tokens, matrix, nlp, POS="NOUN", top_number
 
 
 #def predict(tokens, list_of_hists, word_list, spacy_vocab, nlp, POS="NOUN"):
-def predict(tokens, list_of_hists, list_of_prefix_maps, matrix_df, nlp, POS="NOUN"):
-    # ngram_results = collect_n_grams_matches_original(tokens, list_of_hists)
-    ngram_results = collect_n_grams_matches_indices(tokens, list_of_hists, list_of_prefix_maps)
+# TODO:  A parameter for max results. ng_result = ngram_matches[i].head(max_results); straightforward enough but will
+#  need some regression
+def predict(phrase, list_of_hists, list_of_prefix_maps, matrix_df, nlp, POS="NOUN", threshold=5):
+    """
+    Make a predictino of the next word
+    :param phrase: the input words (a sentence fragment) you are trying to predict what will come next
+    :param list_of_hists: a list of ngram histograms
+    :param list_of_prefix_maps: a list of prefix maps, that map phrases to places in the ngram hist that they appear
+    :param matrix_df:
+    :param nlp:
+    :param POS:
+    :param threshold:
+    :return:
+    """
+    # ngram_matches = collect_n_grams_matches_original(tokens, list_of_hists)
+    ngram_matches = collect_n_grams_matches_indices(phrase, list_of_hists, list_of_prefix_maps)
     # If there is a clear winner in n grams, use that.
     # Defining "clear winner" could be a huge task in itself...
-    threshold = 20
-    ng_result = None # Find a way to default it to the overall word frequency
-    for i in [x for x in range(len(ngram_results))][::-1]:
-        if ngram_results[i]['count'].sum() > threshold:
-            ng_result = ngram_results[i].head(5)
+
+    ng_result = None  # Find a way to default it to the overall word frequency
+    for i in [x for x in range(len(ngram_matches))][::-1]:
+        if ngram_matches[i]['count'].sum() > threshold:
+            ng_result = ngram_matches[i]#.head(5)
             break
 
-    # If not, use the word vectors.
-    #association_results = predict_from_word_vectors(tokens, word_list, spacy_vocab, nlp, POS)
-    association_results = predict_from_word_vectors_matrix(tokens, matrix_df, nlp)
-    return "?"
+    if ng_result is not None:
+        return ng_result
+    else:
+        tokens = phrase.split(" ")
+        # print(tokens)
+        association_results = predict_from_word_vectors_matrix(tokens, matrix_df, nlp, POS)
+        return association_results
 
 
 def choose_best_n_gram(results_list):
@@ -434,14 +450,56 @@ def test_associations(training_df, matrix_df, nlp):
     return match_ranking, match_ranking_hist, cumulative_match_rankings
 
 
-def do_one_prediction_test(source, target, list_of_hists, prefix_maps, matrix_df):
-    sentence = source + " " + target
-    ngram_results = collect_n_grams_matches_indices(sentence, list_of_hists, prefix_maps)
+def do_one_prediction_test(source_phrase, target, list_of_hists, prefix_maps, matrix_df, nlp, threshold=1):
+    sentence = source_phrase + " " + target
+    result = predict(source_phrase, list_of_hists, prefix_maps, matrix_df, nlp, threshold=threshold)
+
+    # Check if there actually are results.  I think there always should be, but don't presume.
+    if result is None:
+        #match_ranking.append(-3)
+        return -3, 'neither'
+    if result.shape[0] == 0:
+        #match_ranking.append(-2)
+        return -2, 'neither'
+
+    # Expected condition.  Now make sure the results are numbered 0 to whatever so we can see where the match is.
+    result.index = range(result.shape[0])
+
+    # Check if the results are from ngrams or word vectors
+    if constants.GRAM_COLUMN_NAME in result.columns:
+        result_type = "ngram"
+        target_matches = result[result[constants.TARGET] == target]
+    else:
+        result_type = "vector"
+        target_matches = result[result[constants.WORD] == target]
+
+    rank = - 1
+    # Check if the target word is actually in the results
+    if target_matches.shape[0] >= 1:
+        # would this ever happen?
+        # match_ranking.append(target_matches.index[0])
+        rank = target_matches.index[0]
+    else:
+        # oops, it was actually empty
+        result_type = "neither"
+        # keep rank at -1
+
+    print(source_phrase, target, rank, result_type)
+    return rank, result_type
 
 
-def test_many_predictions(sentences_df, lists_of_hists, prefix_maps, matrix_df):
-    for source, target in sentences_df.itertuples():
-        do_one_prediction_test()
+def test_many_predictions(sentences_df, list_of_hists, prefix_maps, matrix_df, nlp):
+    ranks = []
+    result_types = []
+    for index, row in sentences_df.iterrows():
+        rank, result_type = do_one_prediction_test(row.source, row.target, list_of_hists, prefix_maps, matrix_df, nlp,
+                                                   threshold=1)
+        ranks.append(rank)
+        result_types.append(result_type)
+    sns.displot(ranks)
+    plt.show()
+    sns.displot(result_types)
+    plt.show()
 
 
 '''
@@ -503,17 +561,25 @@ if __name__ == "__main__":
     start_all = time.time()
     training_df = pd.read_csv(f"word_stats_pkls/training_df_{source}.csv")
     training_df_loaded = time.time()
+    '''
     print(f"training data loaded after {training_df_loaded - start_all} seconds")
     run_one_ngram_test("news", 3, training_df)
     run_one_ngram_test("news", 4, training_df)
     run_one_ngram_test("news", 5, training_df)
     run_one_ngram_test("news", 6, training_df)
+    '''
 
     # Now the word vector part.
     with open("word_stats_pkls/news_matrix_df.pkl", 'rb') as f:
         matrix_df = pickle.load(f)
     nlp = spacy.load("en_core_web_md")
-    test_associations(training_df, matrix_df, nlp)
+    #test_associations(training_df, matrix_df, nlp)
+
+    four_grams, four_gram_prefix_map = get_grams_and_prefix_map("news", 4)
+    five_grams, five_gram_prefix_map = get_grams_and_prefix_map("news", 5)
+    six_grams, six_gram_prefix_map = get_grams_and_prefix_map("news", 6)
+    test_many_predictions(training_df, [four_grams, five_grams, six_grams],
+                          [four_gram_prefix_map, five_gram_prefix_map, six_gram_prefix_map], matrix_df, nlp)
 
     end_all = time.time()
     print(f"all finished after {end_all - start_all} seconds")

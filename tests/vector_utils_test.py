@@ -116,6 +116,13 @@ class WordVectorsTest(unittest.TestCase):
         stop = time.time()
         print(stop - start)
 
+        word_list = ['its', 'about', 'one', 'word', 'quality', 'cosgrove']
+        for word in word_list:
+            result = vu.find_closest_word_vectors_from_matrix(word, matrix_df)
+            self.assertTrue(constants.WORD in list(result.columns))
+            self.assertTrue(constants.POS in list(result.columns))
+            self.assertTrue(constants.SIMILARITY in list(result.columns))
+
     @unittest.skip("")
     def test_find_closest_word_vector_matrix_perf(self):
         with open("../word_stats_pkls/twitter_matrix_13686_df.pkl", 'rb') as f:

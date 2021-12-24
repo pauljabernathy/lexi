@@ -8,7 +8,10 @@ CUM_SUM_COLUMN_NAME = "cum_sum"
 CUM_FRAC_COLUMN_NAME = "cum_frac"
 N_GRAM_SEPARATOR = " "       # For when representing n grams as a string of several words instead of a list
 
-WORD = "word"
+SOURCE = 'source'
+TARGET = 'target'
+
+WORD = "the_word"     # TODO:  Go back and see what all this could mess up!
 SIMILARITY = "similarity"
 POS = 'pos'
 

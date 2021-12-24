@@ -45,7 +45,7 @@ def find_closest_word_vectors_from_matrix(word, similarity_matrix):
     # df = pd.DataFrame(columns=[constants.WORD, constants.SIMILARITY])
     s2 = pd.DataFrame(columns=[constants.WORD, constants.POS, constants.SIMILARITY])
     if word in similarity_matrix:
-        s = similarity_matrix[word].sort_values(ascending=False)
+        # s = similarity_matrix[word].sort_values(ascending=False)
         # df[constants.WORD] = s.index
         # df[constants.SIMILARITY] = s.values
         s2 = similarity_matrix[[word, constants.POS]].sort_values(word, ascending=False)

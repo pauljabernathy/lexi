@@ -253,6 +253,7 @@ class PerfTest(unittest.TestCase):
         I guess this means that it is faster to get stuff from a map than a data frame.
         """
 
+    unittest.skip("")
     def test_performance_collect_word_vectors_with_ngram_index(self):
         """
         tests whether the function that matches ngrams using the index, match_n_grams_by_index(), gives the same
@@ -337,12 +338,25 @@ class PredictFromNGramsTest(unittest.TestCase):
 
     # TODO:  Decide if these will just get the test data or actually assign the self.whatever.
     def load_test_n_grams(self):
-        sentences = self.load_test_sentences()
-        four_grams = bo.find_n_grams_list_of_lists(sentences, 4)
-        four_hist = bo.convert_n_grams_to_hist_df(four_grams)
-        five_hist = bo.convert_n_grams_to_hist_df(bo.find_n_grams_list_of_lists(sentences, 5))
-        six_hist = bo.convert_n_grams_to_hist_df(bo.find_n_grams_list_of_lists(sentences, 6))
-        self.test_histograms = [four_hist, five_hist, six_hist]
+        if not hasattr(self, "test_sentences") or self.test_sentences is None:
+            self.test_sentences = self.load_test_sentences()
+        if not hasattr(self, "test_four_grams_hist") or self.test_four_grams_hist is None:
+            four_grams = bo.find_n_grams_list_of_lists(self.test_sentences, 4)
+            self.test_four_grams_hist = bo.convert_n_grams_to_hist_df(four_grams)
+            self.test_four_grams_hist = prd.add_source_target_columns(self.test_four_grams_hist)
+
+        if not hasattr(self, "test_five_grams_hist") or self.test_five_grams_hist is None:
+            self.test_five_grams_hist = bo.convert_n_grams_to_hist_df(bo.find_n_grams_list_of_lists(self.test_sentences, 5))
+            self.test_five_grams_hist = prd.add_source_target_columns(self.test_five_grams_hist)
+
+        if not hasattr(self, "test_six_grams_hist") or self.test_six_grams_hist is None:
+            self.test_six_grams_hist = bo.convert_n_grams_to_hist_df(bo.find_n_grams_list_of_lists(self.test_sentences, 6))
+            self.test_six_grams_hist = prd.add_source_target_columns(self.test_six_grams_hist)
+
+        self.four_grams_hist = self.test_four_grams_hist
+        self.five_grams_hist = self.test_five_grams_hist
+        self.six_grams_hist = self.test_six_grams_hist
+        self.test_histograms = [self.test_four_grams_hist, self.test_five_grams_hist, self.test_six_grams_hist]
         return self.test_histograms
 
     def load_test_matrix_df(self):
@@ -358,13 +372,21 @@ class PredictFromNGramsTest(unittest.TestCase):
             self.test_prefix_maps.append(current_prefix_map)
         return self.test_prefix_maps
 
+    # TODO:  Have self.real_X, not jus self.X, so we don't keep loading if we run the whole test class and it runs
+    # functions that use both the test and real data.
     def load_real_n_grams(self, source="twitter"):
-        if not hasattr(self, "four_grams_hist") or self.four_grams_hist is None:
-            self.four_grams_hist = pd.read_csv(f"../en_US.{source}.txt_4_grams.csv")
-        if not hasattr(self, "five_grams_hist") or self.five_grams_hist is None:
-            self.five_grams_hist = pd.read_csv(f"../en_US.{source}.txt_5_grams.csv")
-        if not hasattr(self, "six_grams_hist") or self.six_grams_hist is None:
-            self.six_grams_hist = pd.read_csv(f"../en_US.{source}.txt_6_grams.csv")
+        if not hasattr(self, "real_four_grams_hist") or self.real_four_grams_hist is None:
+            self.real_four_grams_hist = pd.read_csv(f"../en_US.{source}.txt_4_grams.csv")
+            self.real_four_grams_hist = prd.add_source_target_columns(self.real_four_grams_hist)
+        if not hasattr(self, "real_five_grams_hist") or self.real_five_grams_hist is None:
+            self.real_five_grams_hist = pd.read_csv(f"../en_US.{source}.txt_5_grams.csv")
+            self.real_five_grams_hist = prd.add_source_target_columns(self.real_five_grams_hist)
+        if not hasattr(self, "real_six_grams_hist") or self.real_six_grams_hist is None:
+            self.real_six_grams_hist = pd.read_csv(f"../en_US.{source}.txt_6_grams.csv")
+            self.real_six_grams_hist = prd.add_source_target_columns(self.real_six_grams_hist)
+        self.four_grams_hist = self.real_four_grams_hist
+        self.five_grams_hist = self.real_five_grams_hist
+        self.six_grams_hist = self.real_six_grams_hist
 
     def load_real_matrix_df(self, source="twitter"):
         matrix_file_fp = f"../word_stats_pkls/matrix_13686_df.pkl"
@@ -431,7 +453,8 @@ class PredictFromNGramsTest(unittest.TestCase):
 
     def test_match_4_grams(self):
         #four_grams = bo.find_n_grams_list_of_lists(self.sentences, 4)
-        self.load_real_n_grams()
+        #self.load_real_n_grams()
+        [four_grams_hist, five_grams_hist, six_grams_hist] = self.load_test_n_grams()
         #hist = bo.convert_n_grams_to_hist_df(self.four_grams_hist)
         hist = self.four_grams_hist
         query_list = ['thank', 'you', 'for']
@@ -539,11 +562,19 @@ class PredictFromNGramsTest(unittest.TestCase):
         tokens = ['tiger', 'roman']
         result = prd.collect_word_vector_associations(tokens, self.matrix_df)
         self.assertEqual(8, result.shape[1])
-        self.assertTrue("word" in list(result.columns))
+        self.assertTrue(constants.WORD in list(result.columns))
+        self.assertFalse("word" in list(result.columns))
         self.assertTrue("tiger" in list(result.columns))
         self.assertTrue("roman" in list(result.columns))
         self.assertEqual((self.matrix_df.shape[0] - 2), result.shape[0])
         # It removes the word you are searching for and any other match of 1.0 similarity, so the result size is 2 less.
+
+        tokens = ['its', 'about', 'one', 'word', 'quality', 'cosgrove']
+        result = prd.collect_word_vector_associations(tokens, self.matrix_df)
+        self.assertEqual(8, result.shape[1])
+        self.assertTrue("word" in list(result.columns))
+        self.assertFalse("tiger" in list(result.columns))
+        self.assertTrue("quality" in list(result.columns))
 
     def test_use_collect_word_vector_associations(self):
         phrases = [
@@ -606,7 +637,7 @@ class PredictFromNGramsTest(unittest.TestCase):
         start = time.time()
         result1 = prd.predict_from_word_vectors_matrix(tokens, self.matrix_df, self.en)
         stop = time.time()
-        self.assertTrue("word" in result1.columns)
+        self.assertTrue(constants.WORD in result1.columns)
         self.assertEqual(constants.DEFAULT_TOP_ASSOCIATIONS, result1.shape[0])
         print(result1)
         print(f"{stop - start} seconds")
@@ -614,8 +645,7 @@ class PredictFromNGramsTest(unittest.TestCase):
         start = time.time()
         result2 = prd.predict_from_word_vectors_matrix(tokens, self.matrix_df, self.en, top_number=17)
         stop = time.time()
-        self.assertTrue("word" in result1.columns)
-        self.assertTrue("word" in result2.columns)
+        self.assertTrue(constants.WORD in result2.columns)
         self.assertEqual(17, result2.shape[0])
         self.assertTrue(result2.iloc[:constants.DEFAULT_TOP_ASSOCIATIONS].equals(result1))
         print(result2)
@@ -669,14 +699,17 @@ class PredictFromNGramsTest(unittest.TestCase):
         phrase = "go on a romantic date"
         histograms = [self.four_grams_hist, self.five_grams_hist, self.six_grams_hist]
         prefix_maps = [self.four_grams_prefix_map, self.five_grams_prefix_map, self.six_grams_prefix_map]
-        result = prd.predict(phrase, histograms, prefix_maps, self.matrix_df, self.en)
+        result1 = prd.predict(phrase, histograms, prefix_maps, self.matrix_df, self.en)
 
         # a phrase that is in the prefix max
         phrase = "may i say thanks for the"
         histograms = [self.four_grams_hist, self.five_grams_hist, self.six_grams_hist]
         prefix_maps = [self.four_grams_prefix_map, self.five_grams_prefix_map, self.six_grams_prefix_map]
-        prd.predict(phrase, histograms, prefix_maps, self.matrix_df, self.en)
+        result2 = prd.predict(phrase, histograms, prefix_maps, self.matrix_df, self.en)
+        print(result1)
+        print(result2)
 
+    @unittest.skip("not now due to it's slowness")
     def test_predict_from_ngrams_and_vectors_actual_data(self):
     #def test_predict_from_ngrams_and_vectors(self):
         phrases = [
@@ -706,7 +739,52 @@ class PredictFromNGramsTest(unittest.TestCase):
             histograms = [self.four_grams_hist, self.five_grams_hist, self.six_grams_hist]
             prefix_maps = [self.four_grams_prefix_map, self.five_grams_prefix_map, self.six_grams_prefix_map]
             print(phrase)
-            prd.predict(phrase, histograms, prefix_maps, self.matrix_df, self.en)
+            current_result = prd.predict(phrase, histograms, prefix_maps, self.matrix_df, self.en)
+            print(current_result)
+
+    def test_do_one_prediction_test(self):
+        histograms = self.load_test_n_grams()
+        prefix_maps = self.load_test_prefix_maps()
+        matrix_df = self.load_test_matrix_df()
+        sentences = self.load_test_sentences()
+
+        # Something that is not there
+        '''
+        result1 = prd.do_one_prediction_test("this is what happens when you try to", "fly", histograms, prefix_maps,
+                                             matrix_df, self.en)
+        self.assertEqual(2, len(result1))
+        self.assertEqual(-1, result1[0])
+        self.assertEqual("neither", result1[1])
+        #'''
+
+        # Something that should be there in the ngrams
+        '''
+        result2 = prd.do_one_prediction_test("one two three", "four", histograms, prefix_maps,
+                                             matrix_df, self.en, threshold=1)
+        self.assertEqual(2, len(result2))
+        self.assertEqual(0, result2[0])
+        self.assertEqual("ngram", result2[1])
+        #'''
+
+        # Something that is not there in the ngrams but should be in the word vector results
+        # ?
+
+        # neither
+        '''
+        result4 = prd.do_one_prediction_test("wet ocean ice", "water", histograms, prefix_maps,
+                                             matrix_df, self.en, threshold=1)
+        print(result4)
+        self.assertEqual(2, len(result4))
+        self.assertEqual(1, result4[0])
+        self.assertEqual("vector", result4[1])
+        '''
+
+        result5 = prd.do_one_prediction_test("wet ocean ice", "water", histograms, prefix_maps,
+                                             matrix_df, self.en, threshold=1)
+        print(result5)
+        self.assertEqual(2, len(result5))
+        #self.assertEqual(1, result5[0])
+        #self.assertEqual("vector", result5[1])
 
 
 if __name__ == '__main__':

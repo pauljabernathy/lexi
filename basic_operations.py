@@ -239,8 +239,11 @@ def create_prefix_map(ngrams_hist):
     :param ngrams_hist: a DataFrame
     :return: a dictionary
     """
-    ngrams_hist['prefix'] = ngrams_hist.gram.apply(split_prefix)
-    ngrams_hist['target'] = ngrams_hist.gram.apply(lambda text: text.split(" ")[-1])
+    if constants.SOURCE not in ngrams_hist.columns:
+        # ngrams_hist['prefix'] = ngrams_hist.gram.apply(split_prefix)
+        ngrams_hist[constants.SOURCE] = ngrams_hist.gram.apply(split_prefix)
+    if constants.TARGET not in ngrams_hist.columns:
+        ngrams_hist[constants.TARGET] = ngrams_hist.gram.apply(lambda text: text.split(" ")[-1])
     prefix_map = {}
     for (index, gram, count, prefix, target) in ngrams_hist.itertuples():
         # print(gram, count, prefix, target)
