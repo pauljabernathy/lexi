@@ -167,13 +167,10 @@ def collect_word_vector_associations(tokens, matrix):
         if m[key].shape[0] > 0:
             non_blank_keys.append(key)
     #results = m[keys[0]]  # TODO: check for empty data frame here also
-    # matrix.mean().mean() = 0.12434165442582384
     if len(non_blank_keys) == 0:
         results = pd.DataFrame(columns=[constants.WORD, constants.POS, constants.SIMILARITY])
         results[constants.POS] = matrix[constants.POS]
-        results[constants.SIMILARITY] = 0.12434165442582384
-        # The mean value of the matrix df I was looking at, I think news.
-        # TODO:  replace with a constant or a calculated value (which is slower).
+        results[constants.SIMILARITY] = constants.GENERIC_SIMILARITY
         results[constants.WORD] = matrix.index
         results.index = range(results.shape[0])
     else:
@@ -189,22 +186,22 @@ def collect_word_vector_associations(tokens, matrix):
         #a.extend(keys)
         results.columns = a
 
-    results['sum'] = 0
+    results[constants.SUM_COLUMN_NAME] = 0
     for column in non_blank_keys:
-        results['sum'] += results[column]
-    results['product'] = 1
+        results[constants.SUM_COLUMN_NAME] += results[column]
+    results[constants.PRODUCT_COLUMN_NAME] = 1
     for column in non_blank_keys:
-        results['product'] *= results[column]
-    results['sum_sq'] = 0
+        results[constants.PRODUCT_COLUMN_NAME] *= results[column]
+    results[constants.SUM_SQ_COLUMN_NAME] = 0
     for column in non_blank_keys:
-        results['sum_sq'] += (results[column]) ** 2
-    results['prd_sq'] = 1
+        results[constants.SUM_SQ_COLUMN_NAME] += (results[column]) ** 2
+    results[constants.PRODUCT_SQ_COLUMN_NAME] = 1
     for column in non_blank_keys:
-        results['prd_sq'] *= ((results[column]) ** 2)
+        results[constants.PRODUCT_SQ_COLUMN_NAME] *= ((results[column]) ** 2)
     return results
 
 
-def get_top_results(all_associations_df, nlp, top_number, pos="NOUN", sort_column='sum_sq'):
+def get_top_results(all_associations_df, nlp, top_number, pos="NOUN", sort_column=constants.SUM_SQ_COLUMN_NAME):
     """
     Grab the top results for the word vector matrix.
     It also takes into account the part of speech, using the idea that you usually want a particular part of speech
@@ -227,10 +224,21 @@ def get_top_results(all_associations_df, nlp, top_number, pos="NOUN", sort_colum
 
 
 def predict_from_word_vectors(tokens, word_list, spacy_vocab, nlp, POS="NOUN", top_number=constants.DEFAULT_TOP_NGRAMS):
+    """
+    Make a prediction based on the word vectors.
+    deprecated in favor of predict_from_word_vectors_matrix
+    :param tokens: a list of words, the input phrase
+    :param word_list: a list of all words
+    :param spacy_vocab: the vocabulary of all words in the spacy object
+    :param nlp: the spacy language object
+    :param POS:
+    :param top_number:
+    :return:
+    """
     closest_vectors_map = {}
     for token in tokens:
         if token not in spacy.lang.en.STOP_WORDS:
-            closest_word_vectors = vu.find_closest_word_vectors(token, word_list, spacy_vocab)
+            closest_word_vectors = vu.find_closest_word_vectors(token, word_list, nlp)
             # Try removing all the one with a similarity of 1, as being either the same word, or erroneously close
             closest_word_vectors = closest_word_vectors[closest_word_vectors[constants.SIMILARITY] != 1]
             #print(closest_word_vectors.head(10))
@@ -240,28 +248,37 @@ def predict_from_word_vectors(tokens, word_list, spacy_vocab, nlp, POS="NOUN", t
     keys = list(m.keys())
     r = m[keys[0]]
     for i in range(1, len(m.keys())):
-        r = r.merge(m[keys[i]], on="word")
-    a = ['word']
+        r = r.merge(m[keys[i]], on=constants.WORD)
+    a = [constants.WORD]
     a.extend(keys)
     r.columns = a
-    r['sum'] = 0
+    r[constants.SUM_COLUMN_NAME] = 0
     for column in keys:
-        r['sum'] += r[column]
-    r['product'] = 1
+        r[constants.SUM_COLUMN_NAME] += r[column]
+    r[constants.PRODUCT_COLUMN_NAME] = 1
     for column in keys:
-        r['product'] *= r[column]
-    r['sum_sq'] = 0
+        r[constants.PRODUCT_COLUMN_NAME] *= r[column]
+    r[constants.SUM_SQ_COLUMN_NAME] = 0
     for column in keys:
-        r['sum_sq'] += (r[column]) ** 2
-    r['prd_sq'] = 1
+        r[constants.SUM_SQ_COLUMN_NAME] += (r[column]) ** 2
+    r[constants.PRODUCT_SQ_COLUMN_NAME] = 1
     for column in keys:
-        r['prd_sq'] *= ((r[column]) ** 2)
+        r[constants.PRODUCT_SQ_COLUMN_NAME] *= ((r[column]) ** 2)
 
     top_results = get_top_results(r, nlp, top_number, POS)
     return top_results
 
 
 def predict_from_word_vectors_matrix(tokens, matrix, nlp, POS="NOUN", top_number=constants.DEFAULT_TOP_ASSOCIATIONS):
+    """
+    Make a prediction based on the word vectors
+    :param tokens:
+    :param matrix:
+    :param nlp:
+    :param POS:
+    :param top_number:
+    :return:
+    """
     r = collect_word_vector_associations(tokens, matrix)
     top_results = get_top_results(r, nlp, top_number, POS)
     return top_results
@@ -289,7 +306,7 @@ def predict(phrase, list_of_hists, list_of_prefix_maps, matrix_df, nlp, POS="NOU
 
     ng_result = None  # Find a way to default it to the overall word frequency
     for i in [x for x in range(len(ngram_matches))][::-1]:
-        if ngram_matches[i]['count'].sum() > threshold:
+        if ngram_matches[i][constants.COUNT_COLUMN_NAME].sum() > threshold:
             ng_result = ngram_matches[i]#.head(5)
             break
 
@@ -457,20 +474,20 @@ def do_one_prediction_test(source_phrase, target, list_of_hists, prefix_maps, ma
     # Check if there actually are results.  I think there always should be, but don't presume.
     if result is None:
         #match_ranking.append(-3)
-        return -3, 'neither'
+        return -3, constants.NEITHER
     if result.shape[0] == 0:
         #match_ranking.append(-2)
-        return -2, 'neither'
+        return -2, constants.NEITHER
 
     # Expected condition.  Now make sure the results are numbered 0 to whatever so we can see where the match is.
     result.index = range(result.shape[0])
 
     # Check if the results are from ngrams or word vectors
     if constants.GRAM_COLUMN_NAME in result.columns:
-        result_type = "ngram"
+        result_type = constants.NGRAM
         target_matches = result[result[constants.TARGET] == target]
     else:
-        result_type = "vector"
+        result_type = constants.VECTOR
         target_matches = result[result[constants.WORD] == target]
 
     rank = - 1
@@ -481,7 +498,7 @@ def do_one_prediction_test(source_phrase, target, list_of_hists, prefix_maps, ma
         rank = target_matches.index[0]
     else:
         # oops, it was actually empty
-        result_type = "neither"
+        result_type = constants.NEITHER
         # keep rank at -1
 
     print(source_phrase, target, rank, result_type)

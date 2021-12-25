@@ -42,41 +42,46 @@ def find_closest_word_vectors_series(word, word_set, spacy_vocab):
 
 
 def find_closest_word_vectors_from_matrix(word, similarity_matrix):
-    # df = pd.DataFrame(columns=[constants.WORD, constants.SIMILARITY])
-    s2 = pd.DataFrame(columns=[constants.WORD, constants.POS, constants.SIMILARITY])
+    """
+    Find the closest word using word vectors.
+    :param word:
+    :param similarity_matrix:
+    :return: a DataFrame
+    """
+    result = pd.DataFrame(columns=[constants.WORD, constants.POS, constants.SIMILARITY])
     if word in similarity_matrix:
-        # s = similarity_matrix[word].sort_values(ascending=False)
-        # df[constants.WORD] = s.index
-        # df[constants.SIMILARITY] = s.values
-        s2 = similarity_matrix[[word, constants.POS]].sort_values(word, ascending=False)
-        s2[constants.WORD] = s2.index
-        s2.index = range(s2.shape[0])
-        s2.columns = [constants.SIMILARITY, constants.POS, constants.WORD]
-        s2 = s2[[constants.WORD, constants.POS, constants.SIMILARITY]]
+        result = similarity_matrix[[word, constants.POS]].sort_values(word, ascending=False)
+        result[constants.WORD] = result.index
+        result.index = range(result.shape[0])
+        result.columns = [constants.SIMILARITY, constants.POS, constants.WORD]
+        result = result[[constants.WORD, constants.POS, constants.SIMILARITY]]
     else:
         pass
-    return s2
+    return result
 
 
-def make_word_similarity_matrix(words, nlp, matrix_size, spacy_words=None):
-    #vocab = list(nlp.vocab.strings)
-    #spacy_word_set = set(v.lower() for v in vocab)
-    #spacy_word_list_series = pd.Series(list(spacy_word_set))
-    # matrix = pd.DataFrame(columns=spacy_word_list_series, index=spacy_word_list_series) # numpy.core._exceptions._ArrayMemoryError: Unable to allocate 929. GiB for an array with shape (353032, 353032)
-    #print(matrix.head())
-    #words = word_hist.word[:matrix_size]
+def make_word_similarity_matrix(words_to_use, nlp, matrix_size, spacy_words=None):
+    """
+    Construct a matrix that maps the similarity of the given words (as defined by the spacy .similiarity() function)
+    to every other word.  More than half is redundant because the diagonal is all 1 and the matrix is symmetric about
+    the diagonal.
+    :param words_to_use: a list of words as strings
+    :param nlp: the spacy object for the language
+    :param matrix_size: how big the matrix should be
+    :param spacy_words: list of words as spacy objects; optional, but if you don't pass it in, it calls nlp(word) for
+    each word in the words list; providing a precomputed list of spacy objects allows it to run faster
+    :return: a matrix_size x matrix_size numpy array
+    """
+    # TODO:  looks like words and spacy_words are redundant.  Why would you pass in spacy_words that are different
+    #  from the word list?  Probably something that should be looked into.
+    # TODO:  There is a defect in this.  If you pass in a spcay_words, it has to correspond to the strings in
+    #  words_to_use.
     z = np.zeros([matrix_size, matrix_size])
-    #z = np.zeros([10, 10])
 
-    '''sample = words[:10]
-    for i in range(len(sample)):
-        for j in range(len(sample)):
-            z[i, j] = nlp(words[i]).similarity(nlp(words[j]))
-    print(z)'''
-    if matrix_size < len(words):
-        words = words[:matrix_size]
+    if matrix_size < len(words_to_use):
+        words_to_use = words_to_use[:matrix_size]
     if spacy_words is None:
-        spacy_words = [nlp(word) for word in words]
+        spacy_words = [nlp(word) for word in words_to_use]
 
     sim = 0
     for i in range(matrix_size): # range(len(spacy_words)):
@@ -90,6 +95,20 @@ def make_word_similarity_matrix(words, nlp, matrix_size, spacy_words=None):
 
 
 def make_word_similarity_df_from_matrix(matrix, word_list, nlp):
+    """
+    Construct a DataFrame that maps the similarity of the given words (as defined by the spacy .similiarity() function)
+    to every other word.  The matrix created by that function is numerical only.  The dataframe created here adds
+    labels around those numbers.  Rows and columns are labeled with the word, and it adds a column for the part of
+    speech of the word in the row.  This technically is a slight flaw because a word can have more than
+    one part of speech.
+    TODO:  See if there is another way to handle part of speech when looking at the actual sentence.  Maybe spacy can
+    get a context dependent part of speech.
+    speech.
+    :param matrix: a square numpy array, presumably created by make_word_similarity_matrix()
+    :param word_list: list of the words; must of course correspond to the words used to create the matrix
+    :param nlp: the spacy object for the language
+    :return: a pandas DataFrame
+    """
     # assert len(word_list) == matrix.shape[0]
     # If the word list is longer, you can just take the top x number of words.
     # But if the word list is shorter, it just won't work.

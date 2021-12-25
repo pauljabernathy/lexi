@@ -12,8 +12,10 @@ import timeit
 PKLS_DIR = "../word_stats_pkls/"
 
 
+# TODO: move perf tests somewhere else
 class PerfTest(unittest.TestCase):
 
+    @unittest.skip("don't run perf tests usually")
     def test_list_iteration_vs_series_apply(self):
         file_name = '../../../courses/data_science_capstone/en_US/moby_dick_no_header.txt'
         file_name = '../../../courses/data_science_capstone/en_US/twitter_train.txt'
@@ -293,24 +295,10 @@ class PerfTest(unittest.TestCase):
         # than in a map than in some other data frame.
 
 
-class PredictFromNGramsTest(unittest.TestCase):
+class PredictionTestBase(unittest.TestCase):
 
-    def setUp(self) -> None:
-        file_name = '../../../courses/data_science_capstone/en_US/twitter_test_3.txt'
-
-        # start = time.time()
-        # print(start)
-        with open(file_name, 'r', encoding='UTF-8') as f:
-            file_text = f.read()
-        # word_stats_df = find_word_stats(file_text)
-        self.sentences = bo.tokenize_by_sentence(file_text)
-        # sentence_lengths = find_sentence_lengths_hist(sentences)
-        #two_grams = bo.find_n_grams_list_of_lists(sentences, 2)
-        #two_grams_series = pd.Series(two_grams)
-        # self.load_n_grams()
+    def setUp(self):
         self.en = spacy.load("en_core_web_md")
-        self.vocab = list(self.en.vocab.strings)
-        self.en_words = set(v.lower() for v in self.vocab)
 
     def load_test_sentences(self):
         sentences = [
@@ -427,6 +415,28 @@ class PredictFromNGramsTest(unittest.TestCase):
         self.load_real_n_grams()
         self.load_real_matrix_df()
         self.load_real_prefix_maps()
+
+
+class PredictFromNGramsTest(PredictionTestBase):
+
+    # TODO: probably should remove this
+    def setUp(self) -> None:
+        file_name = '../../../courses/data_science_capstone/en_US/twitter_test_3.txt'
+
+        # start = time.time()
+        # print(start)
+        with open(file_name, 'r', encoding='UTF-8') as f:
+            file_text = f.read()
+        # word_stats_df = find_word_stats(file_text)
+        self.sentences = bo.tokenize_by_sentence(file_text)
+        # sentence_lengths = find_sentence_lengths_hist(sentences)
+        #two_grams = bo.find_n_grams_list_of_lists(sentences, 2)
+        #two_grams_series = pd.Series(two_grams)
+        # self.load_n_grams()
+        self.en = spacy.load("en_core_web_md")
+        self.vocab = list(self.en.vocab.strings)
+        self.en_words = set(v.lower() for v in self.vocab)
+
 
     def check_prediction(self, result, query_text):
         """
@@ -550,6 +560,9 @@ class PredictFromNGramsTest(unittest.TestCase):
         self.assertEqual(3, len(result))
         for i in range(3):
             self.assertGreater(result[i].shape[0], 0)
+
+
+class PredictFromWordVectorsTest(PredictionTestBase):
 
     def test_collect_word_vector_associations(self):
         """
@@ -688,6 +701,9 @@ class PredictFromNGramsTest(unittest.TestCase):
         stop_matrix = time.time()
         print(matrix_result)
         print(f"{stop_matrix - start_matrix} seconds")
+
+
+class PredictCombinedTest(PredictionTestBase):
 
     def test_predict_from_ngrams_and_vectors(self):
         pass

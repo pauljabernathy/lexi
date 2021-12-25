@@ -17,7 +17,6 @@ class CosineSimilarityTest(unittest.TestCase):
 class WordVectorsTest(unittest.TestCase):
 
     def setUp(self):
-        print("->setup")
         self.en = spacy.load('en_core_web_md')
         vocab = list(self.en.vocab.strings)
         self.en_words = set(v.lower() for v in vocab)
@@ -25,7 +24,6 @@ class WordVectorsTest(unittest.TestCase):
         self.es = spacy.load('es_core_news_md')
         vocab = list(self.es.vocab.strings)
         self.es_words = set(v.lower() for v in vocab)
-        print("<-setup")
 
     @unittest.skip("time")
     def test_closest_word_vector_en(self):
@@ -73,6 +71,7 @@ class WordVectorsTest(unittest.TestCase):
         #print(df2.head(37))
         #print(df3.head(37))
 
+    @unittest.skip("function is deprecated")
     def test_closest_word_vector_series(self):
         print("\n\n----")
         df1 = vu.find_closest_word_vectors('afghanistan', self.en_words, self.en)#.head(37)
@@ -178,7 +177,7 @@ class WordVectorsTest(unittest.TestCase):
 
     def test_make_word_similarity_matrix(self):
         stats = pd.read_csv("../en_US_twitter_stats.csv")
-        stats.columns = ['word', 'count', 'fraction', 'cum_sum', 'cum_frac']
+        # stats.columns = ['word', 'count', 'fraction', 'cum_sum', 'cum_frac']
         with open("../word_stats_pkls/twitter_word_docs_top_13686.pkl", 'rb') as f:
             spacy_words = pickle.load(f)
         start = time.time()
@@ -189,6 +188,21 @@ class WordVectorsTest(unittest.TestCase):
         #print(matrix)
         #with open("z3.pkl", "wb") as f:
         #    pickle.dump(matrix, f)
+
+        # not including the spacy_words should not change the value
+        matrix2 = vu.make_word_similarity_matrix(stats.word, self.en, n)
+        self.assertTrue((matrix == matrix2).all())
+
+        '''
+        words2 = ["tiger", "roman", "cinderella", "ship", "mountain"]
+        matrix3 = vu.make_word_similarity_matrix(words2, self.en, n)
+        print(matrix3)
+
+        matrix4 = vu.make_word_similarity_matrix(words2, self.en, n, spacy_words)
+        print(matrix4)
+
+        print((matrix3 == matrix4).all())
+        '''
 
     @unittest.skip('only make this matrix ad hoc')
     def test_actually_make_word_similarity_matrix(self):

@@ -19,3 +19,13 @@ DEFAULT_NGRAMS_THRESHOLD = 10
 DEFAULT_TOP_NGRAMS = 25
 DEFAULT_TOP_ASSOCIATIONS = 10
 
+SUM_COLUMN_NAME = "sum"
+PRODUCT_COLUMN_NAME = "product"
+SUM_SQ_COLUMN_NAME = "sum_sq"
+PRODUCT_SQ_COLUMN_NAME = "prd_sq"
+
+NGRAM = "ngram"
+VECTOR = "vector"
+NEITHER = "neither"
+
+GENERIC_SIMILARITY = 0.12434165442582384  # The mean value of one of the vector associations matrix, I think news.
