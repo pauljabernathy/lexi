@@ -153,20 +153,16 @@ def collect_word_vector_associations(tokens, matrix):
     """
     closest_vectors_map = {}
     for token in tokens:
+        # TODO: Handle the case where the word you are looking at is the same as constants.WORD.  Which should be unlikely.
         if token not in spacy.lang.en.STOP_WORDS:
             closest_word_vectors = vu.find_closest_word_vectors_from_matrix(token, matrix)
             # Try removing all the one with a similarity of 1, as being either the same word, or erroneously close
             closest_word_vectors = closest_word_vectors[closest_word_vectors[constants.SIMILARITY] != 1]
-            #print(closest_word_vectors.head(10))
             closest_vectors_map[token] = closest_word_vectors
-    #return closest_vectors_map
-    m = closest_vectors_map
-    keys = list(m.keys())
     non_blank_keys = []
-    for key in m.keys():
-        if m[key].shape[0] > 0:
+    for key in closest_vectors_map.keys():
+        if closest_vectors_map[key].shape[0] > 0:
             non_blank_keys.append(key)
-    #results = m[keys[0]]  # TODO: check for empty data frame here also
     if len(non_blank_keys) == 0:
         results = pd.DataFrame(columns=[constants.WORD, constants.POS, constants.SIMILARITY])
         results[constants.POS] = matrix[constants.POS]
@@ -174,16 +170,14 @@ def collect_word_vector_associations(tokens, matrix):
         results[constants.WORD] = matrix.index
         results.index = range(results.shape[0])
     else:
-        results = m[non_blank_keys[0]]
+        results = closest_vectors_map[non_blank_keys[0]]
         a = [constants.WORD, constants.POS, non_blank_keys[0]]
         for i in range(1, len(non_blank_keys)):
-            if m[non_blank_keys[i]].shape[0] > 0:
-                results = results.merge(m[non_blank_keys[i]], on=[constants.WORD, constants.POS])
+            if closest_vectors_map[non_blank_keys[i]].shape[0] > 0:
+                results = results.merge(closest_vectors_map[non_blank_keys[i]], on=[constants.WORD, constants.POS])
                 # I expect the part of speech column to always be the same; using that as a merge criteria so it will
                 # maintain on POS column for the whole thing instead of one for each part joined.
                 a.append(non_blank_keys[i])
-        #a = ['word']
-        #a.extend(keys)
         results.columns = a
 
     results[constants.SUM_COLUMN_NAME] = 0
@@ -279,12 +273,11 @@ def predict_from_word_vectors_matrix(tokens, matrix, nlp, POS="NOUN", top_number
     :param top_number:
     :return:
     """
-    r = collect_word_vector_associations(tokens, matrix)
-    top_results = get_top_results(r, nlp, top_number, POS)
+    vector_results = collect_word_vector_associations(tokens, matrix)
+    top_results = get_top_results(vector_results, nlp, top_number, POS)
     return top_results
 
 
-#def predict(tokens, list_of_hists, word_list, spacy_vocab, nlp, POS="NOUN"):
 # TODO:  A parameter for max results. ng_result = ngram_matches[i].head(max_results); straightforward enough but will
 #  need some regression
 def predict(phrase, list_of_hists, list_of_prefix_maps, matrix_df, nlp, POS="NOUN", threshold=5):
@@ -293,17 +286,15 @@ def predict(phrase, list_of_hists, list_of_prefix_maps, matrix_df, nlp, POS="NOU
     :param phrase: the input words (a sentence fragment) you are trying to predict what will come next
     :param list_of_hists: a list of ngram histograms
     :param list_of_prefix_maps: a list of prefix maps, that map phrases to places in the ngram hist that they appear
-    :param matrix_df:
-    :param nlp:
-    :param POS:
-    :param threshold:
-    :return:
+    :param matrix_df: word vectors DataFrame
+    :param nlp: the spacy object
+    :param POS: the default part of speech that all results should match
+    :param threshold: the minimum threshold for the ngram "backoff" algorithm
+    :return: a DataFrame, with a list of words that could match, in order of most likely to least likely
     """
-    # ngram_matches = collect_n_grams_matches_original(tokens, list_of_hists)
     ngram_matches = collect_n_grams_matches_indices(phrase, list_of_hists, list_of_prefix_maps)
-    # If there is a clear winner in n grams, use that.
-    # Defining "clear winner" could be a huge task in itself...
 
+    # TODO: Use the choose_best_n_gram() function.
     ng_result = None  # Find a way to default it to the overall word frequency
     for i in [x for x in range(len(ngram_matches))][::-1]:
         if ngram_matches[i][constants.COUNT_COLUMN_NAME].sum() > threshold:
@@ -311,12 +302,15 @@ def predict(phrase, list_of_hists, list_of_prefix_maps, matrix_df, nlp, POS="NOU
             break
 
     if ng_result is not None:
-        return ng_result
+        result = ng_result[[constants.TARGET]].rename(columns={constants.TARGET: constants.PREDICTION})
+        result[constants.RESULT_TYPE] = constants.NGRAM
     else:
         tokens = phrase.split(" ")
         # print(tokens)
         association_results = predict_from_word_vectors_matrix(tokens, matrix_df, nlp, POS)
-        return association_results
+        result = association_results[[constants.WORD]].rename(columns={constants.WORD: constants.PREDICTION})
+        result[constants.RESULT_TYPE] = constants.VECTOR
+    return result
 
 
 def choose_best_n_gram(results_list):
@@ -435,6 +429,13 @@ def run_one_ngram_test(source, n, training_df=None):
 
 
 def test_associations(training_df, matrix_df, nlp):
+    """
+    Test accuracy of word vector associations.  Spoiler alert - it was pretty disappointing.
+    :param training_df: The training input source and target pairs.
+    :param matrix_df: word vectors DataFrame
+    :param nlp: the spacy object
+    :return:
+    """
     start = time.time()
     match_ranking = []
     for i, row in training_df.iterrows():
@@ -468,44 +469,56 @@ def test_associations(training_df, matrix_df, nlp):
 
 
 def do_one_prediction_test(source_phrase, target, list_of_hists, prefix_maps, matrix_df, nlp, threshold=1):
+    """
+    Make one prediction of the final word based off the input phrase.  Track how it did, and whether it came from
+    ngrams (usual scenario) or word vectors.
+    :param source_phrase: the input phrase
+    :param target: the correct target (we are hoping that predict() have us this as one of the top options)
+    :param list_of_hists: list of ngram histograms
+    :param prefix_maps: list of prefix maps
+    :param matrix_df: word vectors DataFrame
+    :param nlp: the spacy object
+    :param threshold: the minimum threshold for the ngram "backoff" algorithm
+    :return: a tuple with prediction rank and prediction source
+    """
     sentence = source_phrase + " " + target
     result = predict(source_phrase, list_of_hists, prefix_maps, matrix_df, nlp, threshold=threshold)
 
     # Check if there actually are results.  I think there always should be, but don't presume.
     if result is None:
-        #match_ranking.append(-3)
         return -3, constants.NEITHER
     if result.shape[0] == 0:
-        #match_ranking.append(-2)
         return -2, constants.NEITHER
 
     # Expected condition.  Now make sure the results are numbered 0 to whatever so we can see where the match is.
     result.index = range(result.shape[0])
 
-    # Check if the results are from ngrams or word vectors
-    if constants.GRAM_COLUMN_NAME in result.columns:
-        result_type = constants.NGRAM
-        target_matches = result[result[constants.TARGET] == target]
-    else:
-        result_type = constants.VECTOR
-        target_matches = result[result[constants.WORD] == target]
+    target_matches = result[result[constants.PREDICTION] == target]
+    result_type = result[constants.RESULT_TYPE].iloc[0]
+    # Checking only the first row is theoretically a flaw, but all the rows should be the same
 
     rank = - 1
     # Check if the target word is actually in the results
     if target_matches.shape[0] >= 1:
-        # would this ever happen?
-        # match_ranking.append(target_matches.index[0])
         rank = target_matches.index[0]
     else:
         # oops, it was actually empty
         result_type = constants.NEITHER
-        # keep rank at -1
 
     print(source_phrase, target, rank, result_type)
     return rank, result_type
 
 
 def test_many_predictions(sentences_df, list_of_hists, prefix_maps, matrix_df, nlp):
+    """
+    Run a bunch of predictions and see how well the prediction matches up to the actual value.
+    :param sentences_df: The input sentences
+    :param list_of_hists: list of ngram histograms
+    :param prefix_maps: list of prefix maps
+    :param matrix_df: word vector associations DataFrame
+    :param nlp: the spacy object
+    :return: at the moment, nothing
+    """
     ranks = []
     result_types = []
     for index, row in sentences_df.iterrows():
@@ -553,9 +566,19 @@ def add_source_target_columns(ngrams_hist):
 
 
 def get_grams_and_prefix_map(source, n):
+    """
+    Get the lists of ngram histograms and prefix maps, by loading from the presaved files.
+    :param source: the source (twitter, news, or blogs).  These refer to the files from the Data Science Capstone
+    project.
+    :param n: the "n" from "ngram"
+    :return: a tuple containing 1) the list of ngrams histograms and 2) the list of prefix maps.  It will be a very
+    large object in terms of memory.
+    """
     ngrams = pd.read_csv(f"en_US.{source}.txt_{n}_grams.csv")
     ngrams = add_source_target_columns(ngrams)
 
+    # Of course, this function is very specific to the way files are saved at this particular time, and is not a
+    # general algorithm.
     if n == 3:
         english_n = "three"
     if n == 4:
@@ -570,8 +593,7 @@ def get_grams_and_prefix_map(source, n):
     return ngrams, prefix_map
 
 
-if __name__ == "__main__":
-    # do_predictions()
+def do_tests():
 
     source = "news"
 
@@ -600,5 +622,10 @@ if __name__ == "__main__":
 
     end_all = time.time()
     print(f"all finished after {end_all - start_all} seconds")
+
+if __name__ == "__main__":
+    # do_predictions()
+    do_tests()
+
 
 

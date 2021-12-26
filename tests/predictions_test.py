@@ -724,6 +724,14 @@ class PredictCombinedTest(PredictionTestBase):
         result2 = prd.predict(phrase, histograms, prefix_maps, self.matrix_df, self.en)
         print(result1)
         print(result2)
+        self.assertTrue(constants.PREDICTION in result1.columns)
+        self.assertTrue(constants.PREDICTION in result2.columns)
+        # The following three are equivalent.
+        self.assertTrue(list(result1.columns) == [constants.PREDICTION, constants.RESULT_TYPE])
+        self.assertTrue((result1.columns == [constants.PREDICTION, constants.RESULT_TYPE]).all())
+        self.assertEqual(list(result1.columns), [constants.PREDICTION, constants.RESULT_TYPE])
+
+        self.assertEqual(list(result2.columns), [constants.PREDICTION, constants.RESULT_TYPE])
 
     @unittest.skip("not now due to it's slowness")
     def test_predict_from_ngrams_and_vectors_actual_data(self):
@@ -765,35 +773,35 @@ class PredictCombinedTest(PredictionTestBase):
         sentences = self.load_test_sentences()
 
         # Something that is not there
-        '''
+        # '''
         result1 = prd.do_one_prediction_test("this is what happens when you try to", "fly", histograms, prefix_maps,
                                              matrix_df, self.en)
         self.assertEqual(2, len(result1))
         self.assertEqual(-1, result1[0])
         self.assertEqual("neither", result1[1])
-        #'''
+        # '''
 
         # Something that should be there in the ngrams
-        '''
+        # '''
         result2 = prd.do_one_prediction_test("one two three", "four", histograms, prefix_maps,
                                              matrix_df, self.en, threshold=1)
         self.assertEqual(2, len(result2))
         self.assertEqual(0, result2[0])
         self.assertEqual("ngram", result2[1])
-        #'''
+        # '''
 
         # Something that is not there in the ngrams but should be in the word vector results
         # ?
 
         # neither
-        '''
+        # '''
         result4 = prd.do_one_prediction_test("wet ocean ice", "water", histograms, prefix_maps,
                                              matrix_df, self.en, threshold=1)
         print(result4)
         self.assertEqual(2, len(result4))
         self.assertEqual(1, result4[0])
         self.assertEqual("vector", result4[1])
-        '''
+        # '''
 
         result5 = prd.do_one_prediction_test("wet ocean ice", "water", histograms, prefix_maps,
                                              matrix_df, self.en, threshold=1)

@@ -49,6 +49,7 @@ def find_closest_word_vectors_from_matrix(word, similarity_matrix):
     :return: a DataFrame
     """
     result = pd.DataFrame(columns=[constants.WORD, constants.POS, constants.SIMILARITY])
+    # TODO: Handle the case where the word you are looking at is the same as constants.WORD.  Which should be unlikely.
     if word in similarity_matrix:
         result = similarity_matrix[[word, constants.POS]].sort_values(word, ascending=False)
         result[constants.WORD] = result.index

@@ -11,6 +11,8 @@ N_GRAM_SEPARATOR = " "       # For when representing n grams as a string of seve
 SOURCE = 'source'
 TARGET = 'target'
 
+PREDICTION = "prediction"
+
 WORD = "the_word"     # TODO:  Go back and see what all this could mess up!
 SIMILARITY = "similarity"
 POS = 'pos'
@@ -24,6 +26,7 @@ PRODUCT_COLUMN_NAME = "product"
 SUM_SQ_COLUMN_NAME = "sum_sq"
 PRODUCT_SQ_COLUMN_NAME = "prd_sq"
 
+RESULT_TYPE = "result_type"
 NGRAM = "ngram"
 VECTOR = "vector"
 NEITHER = "neither"
