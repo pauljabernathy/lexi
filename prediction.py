@@ -414,8 +414,11 @@ def test_one_ngram_hist(training_df, ngram_hist, prefix_maps):
     return results
 
 
-def run_one_ngram_test(source, n, training_df=None):
-    ngrams, prefix_map = get_grams_and_prefix_map(source, n)
+def run_one_ngram_test(source, n, training_df=None, ngrams=None, prefix_map=None):
+    print(f"run one ngram_test({source}, {n}, {training_df.shape})")
+
+    if ngrams is None or prefix_map is None:
+        ngrams, prefix_map = get_grams_and_prefix_map(source, n)
     if training_df is None:
         training_df = pd.read_csv(f"word_stats_pkls/training_df_{source}.csv")
     match_ranking = test_one_ngram_hist(training_df, ngrams, prefix_map)
@@ -505,7 +508,7 @@ def do_one_prediction_test(source_phrase, target, list_of_hists, prefix_maps, ma
         # oops, it was actually empty
         result_type = constants.NEITHER
 
-    print(source_phrase, target, rank, result_type)
+    # print(source_phrase, target, rank, result_type)
     return rank, result_type
 
 
@@ -595,33 +598,48 @@ def get_grams_and_prefix_map(source, n):
 
 def do_tests():
 
-    source = "news"
+    training_source = "news"
+    testing_source = "blogs"
 
     start_all = time.time()
-    training_df = pd.read_csv(f"word_stats_pkls/training_df_{source}.csv")
+    print(f"starting tests at time {start_all}")
+    testing_df = pd.read_csv(f"word_stats_pkls/training_df_{testing_source}.csv")
     training_df_loaded = time.time()
-    '''
-    print(f"training data loaded after {training_df_loaded - start_all} seconds")
-    run_one_ngram_test("news", 3, training_df)
-    run_one_ngram_test("news", 4, training_df)
-    run_one_ngram_test("news", 5, training_df)
-    run_one_ngram_test("news", 6, training_df)
-    '''
+    print(f"training sentences loaded after {training_df_loaded - start_all} seconds")
+    # '''
+    three_grams, three_gram_prefix_map = get_grams_and_prefix_map("news", 3)
+    four_grams, four_gram_prefix_map = get_grams_and_prefix_map("news", 4)
+    five_grams, five_gram_prefix_map = get_grams_and_prefix_map("news", 5)
+    six_grams, six_gram_prefix_map = get_grams_and_prefix_map("news", 6)
+    ngrams_loaded = time.time()
+    print(f"ngram data loaded after {ngrams_loaded - training_df_loaded} seconds")
+
+    run_one_ngram_test("news", 3, testing_df, three_grams, three_gram_prefix_map)
+    run_one_ngram_test("news", 4, testing_df, four_grams, four_gram_prefix_map)
+    run_one_ngram_test("news", 5, testing_df, five_grams, five_gram_prefix_map)
+    run_one_ngram_test("news", 6, testing_df, six_grams, six_gram_prefix_map)
+    all_ngrams_done = time.time()
+    print(f"ngram tests run in {all_ngrams_done - training_df_loaded} seconds")
+    # '''
 
     # Now the word vector part.
     with open("word_stats_pkls/news_matrix_df.pkl", 'rb') as f:
         matrix_df = pickle.load(f)
+    matrix_df_loaded = time.time()
+    print(f"loaded the word vector matrix in {matrix_df_loaded - all_ngrams_done} seconds")
     nlp = spacy.load("en_core_web_md")
-    #test_associations(training_df, matrix_df, nlp)
+    nlp_loaded = time.time()
+    print(f"loaded spacy object in {nlp_loaded - matrix_df_loaded} seconds")
+    #test_associations(testing_df, matrix_df, nlp)
+    vector_tests_done = time.time()
 
-    four_grams, four_gram_prefix_map = get_grams_and_prefix_map("news", 4)
-    five_grams, five_gram_prefix_map = get_grams_and_prefix_map("news", 5)
-    six_grams, six_gram_prefix_map = get_grams_and_prefix_map("news", 6)
-    test_many_predictions(training_df, [four_grams, five_grams, six_grams],
+    test_many_predictions(testing_df, [four_grams, five_grams, six_grams],
                           [four_gram_prefix_map, five_gram_prefix_map, six_gram_prefix_map], matrix_df, nlp)
 
     end_all = time.time()
-    print(f"all finished after {end_all - start_all} seconds")
+    print(f"predictions done in {end_all - vector_tests_done} seconds")
+    print(f"all finished at time {end_all}, total {end_all - start_all} seconds")
+
 
 if __name__ == "__main__":
     # do_predictions()

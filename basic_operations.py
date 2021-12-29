@@ -341,19 +341,8 @@ def get_training_df(sentences_list):
 
 
 if __name__ == "__main__":
-
-    file_name = '../../courses/data_science_capstone/en_US/twitter_train.txt'
-    # file_name = '../../courses/data_science_capstone/en_US/moby_dick_no_header.txt'
-    # file_name = '../../courses/data_science_capstone/en_US/twitter_test_1.txt'
-    file_name = '../../courses/data_science_capstone/en_US/twitter_sample.txt'
-    file_name = '../../courses/data_science_capstone/en_US/en_US.twitter.txt'
-    file_name = '../../courses/data_science_capstone/en_US/en_US.news.txt'
-
-    # OK, stop with the constant swapping out of names and changing everything.  Make it to where you can change the
-    # word "news", "twitter" etc. and all the associated file names change.  Will want to do the same where it is
-    # used in prediction and the unit tests.
-    # stem = '../../courses/data_science_capstone/en_US/en_US.news.txt'
     source = "news"
+    source = "blogs"
     file_name = f"../../courses/data_science_capstone/en_US/en_US.{source}.txt"
 
     # process_one_file(file_name)
@@ -361,9 +350,9 @@ if __name__ == "__main__":
     # output_file = "word_stats_pkls/training_sentences_twitter.pkl"
     output_file = f"word_stats_pkls/training_sentences_{source}.pkl"
 
-    #'''
+    # '''
     sentences = get_training_sentences_from_file(file_name, 1000, min_num_words=6)
-    with open(output_file, 'wb') as f:
+    '''with open(output_file, 'wb') as f:
        pickle.dump(sentences, f)
     #    '''
 
@@ -377,12 +366,5 @@ if __name__ == "__main__":
     with open(training_df_file_stem + ".pkl", 'wb') as f:
         pickle.dump(training_df, f)
     training_df.to_csv(training_df_file_stem + ".csv", index=False)
-    # Strange.  I generated training sentences and the data frame from the full twitter file.  The pkl df file was
-    # 140640 KB.  The csv df was 134748 KB.  The pkl of the sentences list was almost 5 Gigs.  The full twitter file
-    # itself is only 163189 KB.
-    # That was with a bug where it used all the sentences.
-    # 4294463 total sentences in the twitter file
-    # With only 1000 sentences, the sentences list pkl is 2516 kb, training_df.pkl is 72 kb, and trainind_df.csv is
-    # 68 kb.
 
 
