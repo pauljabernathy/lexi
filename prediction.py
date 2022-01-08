@@ -373,14 +373,19 @@ def load_hist(file_name):
     return df
 
 
+
+
+# Stuff for testing.
+# TODO: Move the testing stuff to a different module.  I think something besides the unit test module.
 def test_one_ngram_hist(training_df, ngram_hist, prefix_maps):
     start = time.time()
     #for source, target in training_df.itertuples():
     #    pass
     # When I did a timeit, iterrows was faster than itertuples
     results = []
-    source_length = 3
     source_length = len(ngram_hist.iloc[0].source.split(" "))
+    not_found_rank = ngram_hist.shape[0] + 1
+    print(f"not found rank = {not_found_rank}")
     print(f"testing {source_length + 1} grams; {training_df.shape[0]} sentences; {ngram_hist.shape[0]} ngams")
     # The above makes the following assumptions:
     # 1) ngrams_hist has rows
@@ -406,9 +411,9 @@ def test_one_ngram_hist(training_df, ngram_hist, prefix_maps):
                 # would this ever happen?
                 results.append(target_matches.index[0])
             else:
-                results.append(-1)
+                results.append(not_found_rank)
         else:
-            results.append(-2)
+            results.append(not_found_rank)
     end = time.time()
     print(f"tested in {(end - start)} seconds")
     return results
@@ -484,14 +489,15 @@ def do_one_prediction_test(source_phrase, target, list_of_hists, prefix_maps, ma
     :param threshold: the minimum threshold for the ngram "backoff" algorithm
     :return: a tuple with prediction rank and prediction source
     """
-    sentence = source_phrase + " " + target
+    lengths = [df.shape[0] for df in list_of_hists]
+    not_found_rank = np.max(lengths) + 1
     result = predict(source_phrase, list_of_hists, prefix_maps, matrix_df, nlp, threshold=threshold)
 
     # Check if there actually are results.  I think there always should be, but don't presume.
     if result is None:
-        return -3, constants.NEITHER
+        return not_found_rank, constants.NEITHER
     if result.shape[0] == 0:
-        return -2, constants.NEITHER
+        return not_found_rank, constants.NEITHER
 
     # Expected condition.  Now make sure the results are numbered 0 to whatever so we can see where the match is.
     result.index = range(result.shape[0])
@@ -500,7 +506,7 @@ def do_one_prediction_test(source_phrase, target, list_of_hists, prefix_maps, ma
     result_type = result[constants.RESULT_TYPE].iloc[0]
     # Checking only the first row is theoretically a flaw, but all the rows should be the same
 
-    rank = - 1
+    rank = not_found_rank
     # Check if the target word is actually in the results
     if target_matches.shape[0] >= 1:
         rank = target_matches.index[0]
@@ -599,25 +605,25 @@ def get_grams_and_prefix_map(source, n):
 def do_tests():
 
     training_source = "news"
-    testing_source = "blogs"
+    testing_source = "news"
 
     start_all = time.time()
     print(f"starting tests at time {start_all}")
-    testing_df = pd.read_csv(f"word_stats_pkls/training_df_{testing_source}.csv")
+    testing_sentences_df = pd.read_csv(f"word_stats_pkls/training_df_{testing_source}.csv")
     training_df_loaded = time.time()
     print(f"training sentences loaded after {training_df_loaded - start_all} seconds")
     # '''
-    three_grams, three_gram_prefix_map = get_grams_and_prefix_map("news", 3)
-    four_grams, four_gram_prefix_map = get_grams_and_prefix_map("news", 4)
-    five_grams, five_gram_prefix_map = get_grams_and_prefix_map("news", 5)
-    six_grams, six_gram_prefix_map = get_grams_and_prefix_map("news", 6)
+    three_grams, three_gram_prefix_map = get_grams_and_prefix_map(training_source, 3)
+    four_grams, four_gram_prefix_map = get_grams_and_prefix_map(training_source, 4)
+    five_grams, five_gram_prefix_map = get_grams_and_prefix_map(training_source, 5)
+    six_grams, six_gram_prefix_map = get_grams_and_prefix_map(training_source, 6)
     ngrams_loaded = time.time()
     print(f"ngram data loaded after {ngrams_loaded - training_df_loaded} seconds")
 
-    run_one_ngram_test("news", 3, testing_df, three_grams, three_gram_prefix_map)
-    run_one_ngram_test("news", 4, testing_df, four_grams, four_gram_prefix_map)
-    run_one_ngram_test("news", 5, testing_df, five_grams, five_gram_prefix_map)
-    run_one_ngram_test("news", 6, testing_df, six_grams, six_gram_prefix_map)
+    run_one_ngram_test(training_source, 3, testing_sentences_df, three_grams, three_gram_prefix_map)
+    run_one_ngram_test(training_source, 4, testing_sentences_df, four_grams, four_gram_prefix_map)
+    run_one_ngram_test(training_source, 5, testing_sentences_df, five_grams, five_gram_prefix_map)
+    run_one_ngram_test(training_source, 6, testing_sentences_df, six_grams, six_gram_prefix_map)
     all_ngrams_done = time.time()
     print(f"ngram tests run in {all_ngrams_done - training_df_loaded} seconds")
     # '''
@@ -630,10 +636,10 @@ def do_tests():
     nlp = spacy.load("en_core_web_md")
     nlp_loaded = time.time()
     print(f"loaded spacy object in {nlp_loaded - matrix_df_loaded} seconds")
-    #test_associations(testing_df, matrix_df, nlp)
+    #test_associations(testing_sentences_df, matrix_df, nlp)
     vector_tests_done = time.time()
 
-    test_many_predictions(testing_df, [four_grams, five_grams, six_grams],
+    test_many_predictions(testing_sentences_df, [four_grams, five_grams, six_grams],
                           [four_gram_prefix_map, five_gram_prefix_map, six_gram_prefix_map], matrix_df, nlp)
 
     end_all = time.time()
