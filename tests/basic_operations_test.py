@@ -11,6 +11,10 @@ import pickle
 class CleansingTest(unittest.TestCase):
 
     def test_cleanse(self):
+        text = "I'll be there for you, I'd live and I'd"
+        result = cleanse(text)
+        print(result)
+
         text = "you're nice.  maybe; I don't think I want to be a robot!"
         result = cleanse(text)
         self.assertEqual("youre nice maybe i dont think i want to be a robot", result)
@@ -217,18 +221,27 @@ class PrefixMapTest(unittest.TestCase):
         prefix_map = create_prefix_map(histogram)
         self.assertTrue(type(prefix_map) == dict)
         self.assertEqual(dict, type(prefix_map))
-        self.assertEqual([0, 3], prefix_map["thanks for the"])
-        self.assertEqual([1], prefix_map["cant wait to"])
-        self.assertEqual([2], prefix_map["some other word"])
+        self.assertEqual([0, 3], list(prefix_map["thanks for the"]))
+        self.assertEqual([1], list(prefix_map["cant wait to"]))
+        self.assertEqual([2], list(prefix_map["some other word"]))
 
-    @unittest.skip("comment this out to create the prefix map")
+    # @unittest.skip("comment this out to create the prefix map")
     def test_create_an_actual_prefix_map(self):
 
+        '''
         source = "news"
+        two_gram_hist = pd.read_csv(f'../en_US.{source}.txt_2_grams.csv')
+        two_gram_prefix_map = create_prefix_map(two_gram_hist)
+        with open(f"../word_stats_pkls/two_grams_prefix_map_{source}.pkl", 'wb') as f:
+            pickle.dump(two_gram_prefix_map, f)
+        '''
+
+        '''
         three_gram_hist = pd.read_csv(f'../en_US.{source}.txt_3_grams.csv')
         three_gram_prefix_map = create_prefix_map(three_gram_hist)
         with open(f"../word_stats_pkls/three_grams_prefix_map_{source}.pkl", 'wb') as f:
             pickle.dump(three_gram_prefix_map, f)
+        '''
 
         '''
         # four_gram_hist = pd.read_csv('../en_US.twitter.txt_4_grams.csv')
@@ -249,6 +262,76 @@ class PrefixMapTest(unittest.TestCase):
         with open(f"../word_stats_pkls/six_grams_prefix_map_{source}.pkl", 'wb') as f:
             pickle.dump(six_gram_prefix_map, f)
         '''
+
+        '''
+        source = "twitter"
+        two_gram_hist = pd.read_csv(f'../en_US.{source}.txt_2_grams.csv')
+        two_gram_prefix_map = create_prefix_map(two_gram_hist)
+        with open(f"../word_stats_pkls/two_grams_prefix_map_{source}.pkl", 'wb') as f:
+            pickle.dump(two_gram_prefix_map, f)
+        '''
+        # self.make_one_prefix_map("twitter", 2, "three", "../data_with_apostrophes/")
+        # self.make_one_prefix_map("twitter", 3, "three", "../data_with_apostrophes/")
+        # self.make_one_prefix_map("twitter", 4, "three", "../data_with_apostrophes/")
+        # self.make_one_prefix_map("twitter", 5, "three", "../data_with_apostrophes/")
+        # self.make_one_prefix_map("twitter", 6, "three", "../data_with_apostrophes/")
+        self.prd.make_one_prefix_map("twitter", 6, "three", "../data_with_apostrophes/")
+        # self.make_one_prefix_map("twitter", 3, "three")
+
+    '''
+    def make_one_prefix_map(self, source, number, number_en=None, directory="../"):
+        # ngram_hist = pd.read_csv(f'../en_US.{source}.txt_{number}_grams.csv')
+        ngram_hist = pd.read_csv(f'{directory}en_US.{source}.txt_{number}_grams.csv')
+        prefix_map = create_prefix_map(ngram_hist)
+        # directory = "../word_stats_pkls/"
+        # directory = "../data_with_apostrophes/"
+        with open(f"{directory}{number}_grams_prefix_map_{source}.pkl", 'wb') as f:
+            pickle.dump(prefix_map, f)
+    '''
+
+    def test_prefix_map_matches(self):
+        gram = ["thanks for the follow", "cant wait to see", "some other word pair", "thanks for the rt"]
+        count = [8, 3, 1, 27]
+        histogram = pd.DataFrame({"gram": gram, "count": count})
+        prefix_map = create_prefix_map(histogram)
+        self.assertTrue(self.check_prefix_map_does_not_have_false_indices(histogram, prefix_map))
+
+        # Now give it a wrong value
+        prefix_map["thanks for the"].append(1)
+        self.assertFalse(self.check_prefix_map_does_not_have_false_indices(histogram, prefix_map))
+
+        # Now an index out of bounds
+        prefix_map = create_prefix_map(histogram)
+        prefix_map["thanks for the"].append(17)
+        self.assertFalse(self.check_prefix_map_does_not_have_false_indices(histogram, prefix_map))
+
+    def check_prefix_map_does_not_have_false_indices(self, histogram_df, prefix_map):
+        """
+        Checks that none of the indices given in the index lists are incorrect.  For example, a list given in the
+        value part of the dict should not point to a row in the histogram dataframe that correspondes to a different
+        string, and no list should be longer than the dataframe (no no index out of bounds exception).
+        Does not check for completeness, meaning if string A is present as the source of four rows but only three
+        indices are given in the map, this won't detect that.
+        :param prefix_map:
+        :param histogram_df:
+        :return:
+        """
+        no_problems = True
+        for k, v in prefix_map.items():
+            try:
+                matches = histogram_df.iloc[v]
+                correct = (matches.source == k).all()
+            except IndexError as e:
+                correct = False
+            if not correct:
+                no_problems = False
+                print(k)
+        return no_problems
+
+    def test_prefix_map_matches_actual_file(self):
+        from prediction_numerical_test import get_grams_and_prefix_map
+        three_grams, three_gram_prefix_map = get_grams_and_prefix_map("news", 3, directory="../data_with_apostrophes")
+        self.check_prefix_map_does_not_have_false_indices(three_grams, three_gram_prefix_map)
 
 
 class TrainingSetTest(unittest.TestCase):

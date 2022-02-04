@@ -1,4 +1,4 @@
-PUNCTUATION_REGEX = '[.?!]'  # '[\.?!]' is unnecessary; don't need the \ before the . but I don't understand why
+SENTENCE_END_PUNCT_REGEX = '[.?!]'  # '[\.?!]' is unnecessary; don't need the \ before the . but I don't understand why
 KEY_COLUMN_NAME = "item"
 GRAM_COLUMN_NAME = "gram"
 COUNT_COLUMN_NAME = "count"
@@ -12,14 +12,15 @@ SOURCE = 'source'
 TARGET = 'target'
 
 PREDICTION = "prediction"
-
+SCORE = "score"
 WORD = "the_word"     # TODO:  Go back and see what all this could mess up!
 SIMILARITY = "similarity"
 POS = 'pos'
 
 DEFAULT_NGRAMS_THRESHOLD = 10
 DEFAULT_TOP_NGRAMS = 25
-DEFAULT_TOP_ASSOCIATIONS = 10
+# DEFAULT_TOP_ASSOCIATIONS = 10
+DEFAULT_TOP_ASSOCIATIONS = 20000
 
 SUM_COLUMN_NAME = "sum"
 PRODUCT_COLUMN_NAME = "product"

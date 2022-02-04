@@ -2,6 +2,7 @@ import unittest
 import spacy
 import style as st
 import pandas as pd
+import pickle
 
 
 class SentenceLength(unittest.TestCase):
@@ -124,13 +125,6 @@ class SentenceLength(unittest.TestCase):
         self.assertEqual(2, st.find_num_verbs(sentences[2]))
         self.assertEqual(2, st.find_num_verbs(sentences[3]))
 
-    def test_verbs_map(self):
-        text = 'This is Jane. This is Dick. See Dick run. See Jane play with the dog while skydiving.'
-        doc = self.en(text)
-        map = st.find_POS_maps(doc)
-        print(map)
-        a = 'b'
-
     def test_find_num_part_of_speech(self):
         text = 'This is Jane. This is Dick. See Dick run. See Jane play with the dog while skydiving.'
         doc = self.en(text)
@@ -147,11 +141,11 @@ class SentenceLength(unittest.TestCase):
         self.assertEqual(2, st.find_num_part_of_speech(sentences[0], ['NOUN']))
         self.assertEqual(1, st.find_num_part_of_speech(sentences[0], ['ADV']))
 
-    def test_find_pos_map(self):
+    def test_find_pos_in_sentences_counts(self):
         text = "The yellow curtain swayed silently in the gentle breeze. The crow croaked outside. A mouse " \
                "scampered across the floor, spreading Bubonic Plague as it went."
         doc = self.en(text)
-        pos_map = st.find_POS_maps(doc)
+        pos_map = st.find_POSs_in_sentences_counts(doc)
         print(pos_map)
 
     def test_isnan(self):
@@ -170,6 +164,98 @@ class SentenceLength(unittest.TestCase):
         self.assertTrue(pd.Series([[1, 2], [], [8, 17]]).equals(
             st.fill_nas(pd.Series([[1, 2], float('nan'), [8, 17]])))
         )
+
+    def test_find_pos_histogram(self):
+        text = "the dog ate the food"
+        doc = self.en(text)
+        result = st.find_pos_histogram(doc)
+        # print(result)
+        self.assertEqual(2, result.loc['NOUN'].iloc[0])
+        self.assertEqual(2, result.loc['DET'].iloc[0])
+        self.assertEqual(1, result.loc['VERB'].iloc[0])
+
+        with open("../en_docs_lms/moby_md.pkl", 'rb') as f:
+            md = pickle.load(f)
+        md_hist = st.find_pos_histogram(md)
+        md_hist2 = st.find_pos_histogram2(md)
+        md_hist3 = st.find_pos_histogram3(md)
+        self.assertTrue(md_hist.equals(md_hist2))
+        self.assertTrue(md_hist.equals(md_hist3))
+
+        from functools import partial
+        from timeit import timeit
+        with_map = partial(st.find_pos_histogram, doc=md)
+        with_get_token_info = partial(st.find_pos_histogram2, doc=md)
+        with_value_counts = partial(st.find_pos_histogram3, doc=md)
+        n = 10
+        map_result = timeit(with_map, number=n)
+        token_info_result = timeit(with_get_token_info, number=n)
+        value_counts_result = timeit(with_value_counts, number=n)
+        print(map_result)
+        print(token_info_result)
+        print(value_counts_result)
+        '''
+        1.4961301999999996
+        13.7671323
+        1.0406632999999985
+        => Using lu.find_pos_histogram is much slower, probably because that function does a lot of things.
+        Using just value_counts() is a hair faster than the function I wrote that uses a map (OK, a "dict" in python 
+        terminology).  I don't know how much all this will affect things in the context of the entire program through.
+        '''
+
+    def test_pos_pos_map(self):
+        text = "The color of the telescope. Eat apples and bananas."
+        result = st.make_pos_pos_map(self.en(text))
+        print(result)
+        self.assertEqual({'NOUN': 2}, result['DET'])
+        self.assertEqual({'ADP': 1, 'CCONJ': 1}, result['NOUN'])
+        self.assertEqual({'NOUN': 1}, result['VERB'])
+        self.assertEqual({'NOUN': 1}, result['CCONJ'])
+        self.assertEqual({'DET': 1}, result['ADP'])
+
+    def test_pos_pos_df(self):
+        text = "The color of the telescope. Eat apples and bananas."
+        result = st.make_pos_pos_df(self.en(text))
+        result = result.sort_index()
+        print(result)
+        self.assertEqual(1.0, result['count_after_NOUN']['ADP'])
+        '''self.assertTrue(([1, 1, 0, 0] == result['count_after_NOUN'].values).all())
+        #self.assertEqual(1.0, result['count_after_'][''])
+        self.assertTrue(([0.0, 0, 1, 0] == result['count_after_ADP'].values).all())
+        self.assertTrue(([0, 0, 0, 2] == result['count_after_DET'].values).all())
+        self.assertTrue(([0, 0, 0, 1] == result['count_after_VERB'].values).all())
+        self.assertTrue(([0, 0, 0, 1] == result['count_after_CCONJ'].values).all())
+        # adp cconj det noun verb     adp cconj det noun
+        '''
+
+        with open("../en_docs_lms/moby_md.pkl", 'rb') as f:
+            md = pickle.load(f)
+        moby_result = st.make_pos_pos_df(md)
+        print(moby_result)
+        #moby_result.append(pd.DataFrame())
+
+        # Now make sure we can save it and reload it and it is the same.
+        moby_result.to_csv("moby_pos_pos.csv", index=True)
+        md_pos_pos = pd.read_csv("moby_pos_pos.csv", index_col=0)  # Need to specify that we are loading the index.
+        print(md_pos_pos.equals(moby_result))
+        self.assertTrue(md_pos_pos.equals(moby_result))
+
+    def test_word_pos_map(self):
+        text = "The color of the telescope. Eat apples and bananas."
+        doc = self.en(text)
+        result = st.make_word_pos_map(doc)
+        print(result)
+        self.assertTrue("The" not in result)
+        self.assertTrue("the" in result and result['the'] == {'NOUN': 2})
+        self.assertTrue("color" in result and result["color"] == {"ADP": 1})
+        self.assertTrue("of" in result and result["of"] == {"DET": 1})
+        self.assertTrue("telescope" not in result)  # because it is the last word in the sentence
+        self.assertTrue("eat" in result and result["eat"] == {"NOUN": 1})
+        self.assertTrue("apples" in result and result["apples"] == {"CCONJ": 1})
+        self.assertTrue("and" in result and result["and"] == {"NOUN": 1})
+        self.assertTrue("bananas" not in result)  # because it is the last word in the sentence
+        # self.assertTrue("" in result)
+
 
 if __name__ == '__main__':
     unittest.main()

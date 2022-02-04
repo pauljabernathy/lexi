@@ -2,7 +2,9 @@ from scipy import spatial
 import pandas as pd
 import numpy as np
 import constants
-
+import pickle
+import time
+import spacy
 
 def cosine_similarity(x, y):
     return 1 - spatial.distance.cosine(x, y)
@@ -119,6 +121,64 @@ def make_word_similarity_df_from_matrix(matrix, word_list, nlp):
     df[constants.POS] = s
     return df
 
+
+def make_and_pickle_matrices(sources, nlp):
+    directory = "./data_with_apostrophes/"
+
+    for source in sources:
+        input_file = f"{directory}{source}_stats.csv"
+        print("about to load the csv file")
+        before_csv_read = time.time()
+        stats = pd.read_csv(input_file)
+        after_csv_read = time.time()
+        print(f"loaded the file in {after_csv_read - before_csv_read} seconds")
+        stats.columns = ['word', 'count', 'fraction', 'cum_sum', 'cum_frac']
+        start = time.time()
+        n = min(stats[stats.cum_frac > .95].index)
+        top_words_df = stats.iloc[:n]
+        top_words_list = list(top_words_df.word)
+        with open(f"{directory}{source}_top_words.pkl", "wb") as f:
+            pickle.dump(top_words_list, f)
+        '''    
+        matrix = make_word_similarity_matrix(stats.word, nlp, n)
+        end = time.time()
+        print("created the matrix in", (end - start), " time")
+        #print(matrix)
+        output_file = f"{directory}{source}_matrix.pkl"
+        with open(output_file, "wb") as f:
+            pickle.dump(matrix, f)
+        '''
+
+
+def make_word_similarity_dfs(sources, nlp):
+    directory = "./data_with_apostrophes/"
+
+    for source in sources:
+        numerical_matrix_file_fp = f"{directory}{source}_matrix.pkl"
+        with open(numerical_matrix_file_fp, 'rb') as f:
+            matrix = pickle.load(f)
+
+        word_docs_file_fp = f"{directory}{source}_top_words.pkl"
+        with open(word_docs_file_fp, "rb") as f:
+            word_list = pickle.load(f)
+        # word_list = [w.text for w in word_list]
+
+        df = make_word_similarity_df_from_matrix(matrix, word_list, nlp)
+        df_file_fp = f"{directory}{source}_matrix_df.pkl"
+        with open(df_file_fp, "wb") as f:
+            pickle.dump(df, f)
+
+
+if __name__ == "__main__":
+    should_create_matrices = False
+    should_create_dfs = True
+    nlp = spacy.load("en_core_web_md")
+
+    if should_create_matrices:
+        make_and_pickle_matrices(['twitter', 'news', 'blogs'], nlp)
+
+    if should_create_dfs:
+        make_word_similarity_dfs(['twitter', 'news', 'blogs'], nlp)
 
 
 

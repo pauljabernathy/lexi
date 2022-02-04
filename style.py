@@ -4,6 +4,8 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pickle
+import lemma_utils as lu
+import constants
 
 POS_LIST = ['VERB', 'NOUN', 'ADJ', 'ADV']
 POS_EXCLUDE = ['PUNCT']
@@ -77,7 +79,7 @@ def plot_sentence_length_map(spacy_doc_file_path):
     plt.show()
 
 
-def find_POS_maps(doc):
+def find_POSs_in_sentences_counts(doc):
     verbs_map = {}
     nouns_map = {}
     adj_map = {}
@@ -155,11 +157,133 @@ def find_num_part_of_speech(sentence, pos_list):
     return len([word for word in sentence if word.pos_ in pos_list])  # AUX for things like "is"
 
 
+def find_pos_histogram(doc, poses_to_ignore=['PUNCT', 'SPACE']):
+    """
+    Compute the histogram of parts of speech.  You can get the same data from lemma_utils.get_token_info(
+    doc).value_counts(), except value_counts does not compute the ratios, and this allows you to ignore certain parts of
+    speech.  For evaluating style, this will give you the proportion of nouns, verbs, etc.  In the context of
+    predicting the next word, this will give you the prior probability of the part of speech of the next word.
+    :param doc:
+    :param poses_to_ignore:
+    :return:
+    """
+    pos_map = {}
+    for token in doc:
+        if token.pos_ in poses_to_ignore:
+            continue
+        if token.pos_ in pos_map:
+            pos_map[token.pos_] = pos_map[token.pos_] + 1
+        else:
+            pos_map[token.pos_] = 1
+    result = pd.DataFrame(pd.Series(pos_map), columns=["count"])
+    result['ratio'] = result['count'] / result['count'].sum()
+    result = result.sort_values("count", ascending=False)
+    return result
+
+
+def find_pos_histogram2(doc, poses_to_ignore=['PUNCT', 'SPACE']):
+    result2 = pd.DataFrame(lu.get_token_info(doc).pos.value_counts())
+    result2.columns = ['count']
+    result2 = result2.loc[set(result2.index).difference(poses_to_ignore)]
+    result2['ratio'] = result2['count'] / result2['count'].sum()
+    result2 = result2.sort_values("count", ascending=False)
+    return result2
+
+
+def find_pos_histogram3(doc, poses_to_ignore=['PUNCT', 'SPACE']):
+    pos = [getattr(t, 'pos_', None) for t in doc] if hasattr(doc[0], 'pos_') else None
+    result2 = pd.DataFrame(pd.Series(pos).value_counts())
+    #result2 = pd.DataFrame(lu.get_token_info(doc).pos.value_counts())
+    result2.columns = ['count']
+    result2 = result2.loc[set(result2.index).difference(poses_to_ignore)]
+    result2['ratio'] = result2['count'] / result2['count'].sum()
+    result2 = result2.sort_values("count", ascending=False)
+    return result2
+
+
+def make_pos_pos_map(doc):
+    """
+    For every part of speech in the document, make a histogram of the counts of the parts of speech that follow it.
+    :param doc:
+    :return:
+    """
+    pos_map = {}
+    poses_to_ignore = ['PUNCT', 'SPACE']
+    # Break it down by sentence, because the POS of the first in a sentence is hardly related if at all to the POS of
+    # the last word of the preceding sentence.
+    for sentence in doc.sents:
+        words = [word for word in sentence]
+        for i in range(len(words) - 1):
+            pre = words[i]
+            post = words[i + 1]
+            #if pre.pos_ in poses_to_ignore or post.pos_ in poses_to_ignore:
+            if False: # pre.pos_ in poses_to_ignore:
+                continue
+            if pre.pos_ not in pos_map:
+                pos_map[pre.pos_] = {}
+            if post.pos_ in pos_map[pre.pos_]:
+                pos_map[pre.pos_][post.pos_] = pos_map[pre.pos_][post.pos_] + 1
+            else:
+                pos_map[pre.pos_][post.pos_] = 1
+    return pos_map
+
+
+def make_pos_pos_df(doc):
+    map = make_pos_pos_map(doc)
+    keys = list(map.keys())
+    if len(keys) == 0:
+        return
+    pos = keys[0]
+    column = f"count_after_{pos}"
+    result_df = pd.DataFrame(pd.Series(map[pos]), columns=[column])
+    result_df[constants.POS] = result_df.index
+    # TODO:  See if you can do pd.merge without adding the column, just on the index.
+
+    for pos in keys[1:]:
+        column = f"count_after_{pos}"
+        current_df = pd.DataFrame(pd.Series(map[pos]), columns=[column])
+        current_df[constants.POS] = current_df.index
+        result_df = result_df.merge(current_df, on=constants.POS, how="outer")
+
+    result_df = result_df.fillna(0)
+
+    # Now make the "pos" column the index, not just some column.
+    result_df.index = result_df.pos
+    result_df = result_df.drop(constants.POS, axis=1)
+    return result_df
+
+
+def make_word_pos_map(doc):
+    """
+    Make a mapping of words and the histogram of parts of speech following the word.  I suspect this is only useful
+    for common words that are not nouns, verbs, adjectives, and adverbs.  Words like "the", "of", "it" etc.
+    :param doc:
+    :return:
+    """
+    pos_map = {}
+    # Break it down by sentence, because the POS of the first in a sentence is hardly related if at all to the POS of
+    # the last word of the preceding sentence.
+    poses_to_ignore = ['PUNCT', 'SPACE']
+    for sentence in doc.sents:
+        words = [word for word in sentence]
+        for i in range(len(words) - 1):
+            pre = words[i]
+            post = words[i + 1]
+            word = pre.text.lower()
+            if post.pos_ not in poses_to_ignore and pre.pos_ not in poses_to_ignore:
+                if word not in pos_map:
+                    pos_map[word] = {}
+                if post.pos_ in pos_map[word]:
+                    pos_map[word][post.pos_] = pos_map[word][post.pos_] + 1
+                else:
+                    pos_map[word][post.pos_] = 1
+    return pos_map
+
 def analyze_doc(spacy_doc):
     sentence_lengths_hist = find_sentence_lengths_hist(spacy_doc)
     print(sentence_lengths_hist)
     print(sentence_lengths_hist / sentence_lengths_hist.sum())
-    pos_map = find_POS_maps(spacy_doc)
+    pos_map = find_POSs_in_sentences_counts(spacy_doc)
     pos_hist = pd.Series([word.pos_ for word in spacy_doc]).value_counts()
     print(pos_hist)
     print(pos_hist / pos_hist.sum())

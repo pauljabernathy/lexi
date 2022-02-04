@@ -17,11 +17,11 @@ def cleanse(text):
     :return:
     """
     text = text.lower()
-    text = text.replace("'", '')    # Remove apostrophes
+    # text = text.replace("'", '')    # Remove apostrophes
     # text = re.sub('[^\w\s]', ' ', text)
     # Replace punct with a space so that when someone does something like <word comma word> you don't accidentally
     # transform it into one word.  We remove extra spaces in the next line.
-    text = re.sub('[^\w\s]', ' ', text)
+    text = re.sub('[^\w\s\']', ' ', text)
     text = re.sub('\\n', ' ', text)
     text = re.sub(' +', ' ', text)
     text = text.strip()     # Small thing but remove a trailing space.
@@ -53,7 +53,7 @@ def split_to_sentences(text):
     """
     # TODO: A way to handle text that is broken up by lines (for example, poetry); maybe allow the call to specify
     #  the regex.
-    p = re.compile(constants.PUNCTUATION_REGEX)
+    p = re.compile(constants.SENTENCE_END_PUNCT_REGEX)
     sentences = p.split(text)
     for i in range(len(sentences)):
         sentences[i] = sentences[i].strip()
@@ -171,40 +171,45 @@ def convert_n_grams_to_hist_df(ngrams_list):
     return grams_hist_df
 
 
-def process_one_file(file_name):
+def process_one_file(input_file_name, directory=None):
     start = time.time()
     print(start)
-    with open(file_name, 'r', encoding='UTF-8') as f:
+    with open(input_file_name, 'r', encoding='UTF-8') as f:
         file_text = f.read()
     # word_stats_df = find_word_stats(file_text)
     sentences = tokenize_by_sentence(file_text)
     # sentence_lengths = find_sentence_lengths_hist(sentences)
+
+    output_file_stem = input_file_name.split("/")[-1]
+    if directory is not None:
+        if not directory.endswith("/"):
+            directory = directory + "/"
+        output_file_stem = directory + output_file_stem
+
     two_grams = find_n_grams_list_of_lists(sentences, 2)
-    three_grams = find_n_grams_list_of_lists(sentences, 3)
-    four_grams = find_n_grams_list_of_lists(sentences, 4)
-    five_grams = find_n_grams_list_of_lists(sentences, 5)
-    six_grams = find_n_grams_list_of_lists(sentences, 6)
-    print('we have the n grams now', time.time())
-    #two_grams_series = pd.Series(two_grams)
-    # two_grams_series = two_grams_series.apply(",".join)
-    #two_grams_series = two_grams_series.apply(constants.N_GRAM_SEPARATOR.join)
-    #two_grams_hist = two_grams_series.value_counts()
     two_grams_hist_df = convert_n_grams_to_hist_df(two_grams)
     print('we have the two grams hist now', time.time())
+    two_grams_hist_df.to_csv(output_file_stem + "_2_grams.csv", index=False)
 
-    #three_grams_series = pd.Series(three_grams)
-    # three_grams_series = three_grams_series.apply(",".join)
-    #three_grams_series = three_grams_series.apply(constants.N_GRAM_SEPARATOR.join)
-    #three_grams_hist = three_grams_series.value_counts()
+    three_grams = find_n_grams_list_of_lists(sentences, 3)
     three_grams_hist_df = convert_n_grams_to_hist_df(three_grams)
     print('we have the three grams hist now', time.time())
+    three_grams_hist_df.to_csv(output_file_stem + "_3_grams.csv", index=False)
 
-    #four_grams_series = pd.Series(four_grams)
-    #four_grams_series = four_grams_series.apply(constants.N_GRAM_SEPARATOR.join)
-    #four_grams_hist = four_grams_series.value_counts()
+    four_grams = find_n_grams_list_of_lists(sentences, 4)
     four_grams_hist_df = convert_n_grams_to_hist_df(four_grams)
+    four_grams_hist_df.to_csv(output_file_stem + "_4_grams.csv", index=False)
+
+    five_grams = find_n_grams_list_of_lists(sentences, 5)
     five_grams_hist_df = convert_n_grams_to_hist_df(five_grams)
+    five_grams_hist_df.to_csv(output_file_stem + "_5_grams.csv", index=False)
+
+    six_grams = find_n_grams_list_of_lists(sentences, 6)
     six_grams_hist_df = convert_n_grams_to_hist_df(six_grams)
+    six_grams_hist_df.to_csv(output_file_stem + "_6_grams.csv", index=False)
+
+    print('we have the n grams now', time.time())
+
     end = time.time()
     print("processing completed in", (end - start), "seconds")
 
@@ -213,12 +218,6 @@ def process_one_file(file_name):
     pd.DataFrame(four_grams_hist_df).to_csv(file_name.split("/")[-1] + "_4_grams.csv", index=True)
     pd.DataFrame(five_grams_hist_df).to_csv(file_name.split("/")[-1] + "_5_grams.csv", index=True)
     pd.DataFrame(six_grams_hist_df).to_csv(file_name.split("/")[-1] + "_6_grams.csv", index=True)'''
-
-    two_grams_hist_df.to_csv(file_name.split("/")[-1] + "_2_grams.csv", index=False)
-    three_grams_hist_df.to_csv(file_name.split("/")[-1] + "_3_grams.csv", index=False)
-    four_grams_hist_df.to_csv(file_name.split("/")[-1] + "_4_grams.csv", index=False)
-    five_grams_hist_df.to_csv(file_name.split("/")[-1] + "_5_grams.csv", index=False)
-    six_grams_hist_df.to_csv(file_name.split("/")[-1] + "_6_grams.csv", index=False)
 
     print("files saved")
 
@@ -249,9 +248,32 @@ def create_prefix_map(ngrams_hist):
         # print(gram, count, prefix, target)
         if prefix not in prefix_map:
             prefix_map[prefix] = [index]
+            #prefix_map[prefix] = np.array([index])
         else:
             prefix_map[prefix].append(index)
+            #prefix_map[prefix] = np.append(prefix_map[prefix], index)
     return prefix_map
+
+
+def make_one_prefix_map(source, number, directory="../"):
+    # ngram_hist = pd.read_csv(f'../en_US.{source}.txt_{number}_grams.csv')
+    ngram_hist = pd.read_csv(f'{directory}en_US.{source}.txt_{number}_grams.csv')
+    prefix_map = create_prefix_map(ngram_hist)
+    # directory = "../word_stats_pkls/"
+    # directory = "../data_with_apostrophes/"
+    with open(f"{directory}{number}_grams_prefix_map_{source}.pkl", 'wb') as f:
+        pickle.dump(prefix_map, f)
+
+
+def make_prefix_maps(sources, numbers, directory="./"):
+    # make_one_prefix_map(source, 2, directory)
+    '''make_one_prefix_map(source, 3, directory)
+    make_one_prefix_map(source, 4, directory)
+    make_one_prefix_map(source, 5, directory)
+    make_one_prefix_map(source, 6, directory)'''
+    for source in sources:
+        for n in numbers:
+            make_one_prefix_map(source, n, directory)
 
 
 # Creating training data
@@ -302,6 +324,7 @@ def get_training_sentences(text, how_many, min_num_words=None):
 def get_training_sentences_from_file(full_path, how_many, random_seed=37, min_num_words=None):
     """
     Get a random subset of sentences form the specifies file.
+    TODO:  Rename to get_sample_sentences() on a future commit.
     :param full_path: the directory and name of the file
     :param how_many: the number of sentences to choose
     :param random_seed: optional random seed for consistent results
@@ -340,31 +363,60 @@ def get_training_df(sentences_list):
     return training_df
 
 
+def create_and_save_training_df(sources):
+    for source in sources:
+        input_file_name = f"../../courses/data_science_capstone/en_US/en_US.{source}.txt"
+        sentences = get_training_sentences_from_file(input_file_name, 1000, min_num_words=6)
+
+        # with open("training_sentences.pkl", 'rb') as f:
+        #    sentences = pickle.load(f)
+        # '''
+        training_df = get_training_df(sentences)
+        print(training_df.head())
+
+        # Save the training_df.  Both ways, and see which file is bigger.
+        # training_df_file_stem = f"{directory}test_sentences_df_{source}"
+        output_file = f"{directory}test_sentences_df_{source}.pkl"
+        output_file_csv = f"{directory}test_sentences_df_{source}.csv"
+        with open(output_file, 'wb') as f:
+            pickle.dump(training_df, f)
+        training_df.to_csv(output_file_csv, index=False)
+        # '''
+
+
 if __name__ == "__main__":
     source = "news"
     source = "blogs"
-    file_name = f"../../courses/data_science_capstone/en_US/en_US.{source}.txt"
+    source = "twitter"
+    input_file_name = f"../../courses/data_science_capstone/en_US/en_US.{source}.txt"
 
-    # process_one_file(file_name)
+    should_find_word_stats = False
+    should_find_ngrams = False
+    should_make_prefix_maps = False
+    should_make_prefix_maps = True
+    should_make_test_sentence_df = False
+    # should_make_test_sentence_df = True
 
-    # output_file = "word_stats_pkls/training_sentences_twitter.pkl"
-    output_file = f"word_stats_pkls/training_sentences_{source}.pkl"
+    directory = "./data_with_apostrophes/"
 
-    # '''
-    sentences = get_training_sentences_from_file(file_name, 1000, min_num_words=6)
-    '''with open(output_file, 'wb') as f:
-       pickle.dump(sentences, f)
-    #    '''
+    if should_find_word_stats:
+        with open(input_file_name, 'r', encoding='UTF-8') as f:
+            text = f.read()
+            stats = find_word_stats(text)
+            output_file_name = f"{directory}{source}_stats.csv"
+            stats.to_csv(output_file_name)
 
-    #with open("training_sentences.pkl", 'rb') as f:
-    #    sentences = pickle.load(f)
-    training_df = get_training_df(sentences)
-    print(training_df.head())
+    if should_find_ngrams:
+        process_one_file(input_file_name, directory)
 
-    # Save the training_df.  Both ways, and see which file is bigger.
-    training_df_file_stem = f"word_stats_pkls/training_df_{source}"
-    with open(training_df_file_stem + ".pkl", 'wb') as f:
-        pickle.dump(training_df, f)
-    training_df.to_csv(training_df_file_stem + ".csv", index=False)
+    if should_make_prefix_maps:
+        make_prefix_maps(["blogs", "twitter"], [2, 3, 4], directory)
+
+    # TODO: Distinguish between a sample for training and for testing.  Right now they are only for testing.  But it
+    #  would be nice to have an algorithm that uses a bunch for training in some way then tests with a different set.
+    if should_make_test_sentence_df:
+        create_and_save_training_df(['twitter', 'news', 'blogs'])
+
+
 
 

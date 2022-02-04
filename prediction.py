@@ -7,9 +7,11 @@ import numpy as np
 #import matplotlib.pyplot as plt
 from functools import partial
 #import pickle
-#import basic_operations as bo
+import basic_operations as bo
 #import time
 
+CONTRACTION_STOP_WORDS = ["i'll", "you'll", "i'd", "you'd", "we'll", "we'd", "can't", "won't"
+                          ]
 
 def match_n_grams_one_hist_original(tokens:list, ngrams_hist:pd.Series):
     """
@@ -76,8 +78,14 @@ def match_n_grams_one_hist_3(tokens:list, ngrams_hist:pd.Series):
 
 
 def match_n_grams_by_index(indices, n_grams_hist):
-    matches = n_grams_hist.iloc[indices]
-    return matches
+    try:
+        matches = n_grams_hist.iloc[indices]
+        return matches
+    except Exception as e:
+        print("Exception in match_n_grams_by_index")
+        print(e)
+        #print(indices)
+        raise e
 
 
 def match_n_grams_one_hist_with_array(tokens:list, array:np.ndarray):
@@ -139,9 +147,22 @@ def collect_n_grams_matches_indices(text, list_of_hists, list_of_prefix_maps):
             indices = prefix_map[search_text]
         else:
             indices = []
-        current_result = match_n_grams_by_index(indices, hist)
-        results.append(current_result)
+        try:
+            current_result = match_n_grams_by_index(indices, hist)
+            results.append(current_result)
+        except Exception as e:
+            print(e)
+            print(text)
+            print(search_text)
     return results
+
+
+def is_stop_word(word):
+    if word in spacy.lang.en.STOP_WORDS:
+        return True
+    if word in CONTRACTION_STOP_WORDS:
+        return True
+    return False
 
 
 def collect_word_vector_associations(tokens, matrix):
@@ -154,7 +175,8 @@ def collect_word_vector_associations(tokens, matrix):
     closest_vectors_map = {}
     for token in tokens:
         # TODO: Handle the case where the word you are looking at is the same as constants.WORD.  Which should be unlikely.
-        if token not in spacy.lang.en.STOP_WORDS:
+        # if token not in spacy.lang.en.STOP_WORDS:
+        if not is_stop_word(token):
             closest_word_vectors = vu.find_closest_word_vectors_from_matrix(token, matrix)
             # Try removing all the one with a similarity of 1, as being either the same word, or erroneously close
             closest_word_vectors = closest_word_vectors[closest_word_vectors[constants.SIMILARITY] != 1]
@@ -195,7 +217,7 @@ def collect_word_vector_associations(tokens, matrix):
     return results
 
 
-def get_top_results(all_associations_df, nlp, top_number, pos="NOUN", sort_column=constants.SUM_SQ_COLUMN_NAME):
+def get_top_results_filter_pos(all_associations_df, nlp, top_number, pos="NOUN", sort_column=constants.SUM_SQ_COLUMN_NAME):
     """
     Grab the top results for the word vector matrix.
     It also takes into account the part of speech, using the idea that you usually want a particular part of speech
@@ -211,10 +233,22 @@ def get_top_results(all_associations_df, nlp, top_number, pos="NOUN", sort_colum
     all_associations_df = all_associations_df.sort_values(sort_column, ascending=False)
     if constants.POS not in all_associations_df:
         all_associations_df[constants.POS] = all_associations_df[constants.WORD].apply(lambda w: nlp(w)[0].pos_)
-    all_associations_df = all_associations_df[all_associations_df[constants.POS] == pos]
+    if pos is not None:
+        all_associations_df = all_associations_df[all_associations_df[constants.POS] == pos]
     # all_associations_df = all_associations_df.drop(['pos'], axis=1)
     top_results = all_associations_df.iloc[0:top_number]
     return top_results
+
+
+def get_top_results_scale_pos(all_associations_df, nlp, poses,
+                              top_number=25, sort_column=constants.SUM_SQ_COLUMN_NAME):
+    all_associations_df = all_associations_df.sort_values(sort_column, ascending=False)
+    if constants.POS not in all_associations_df:
+        all_associations_df[constants.POS] = all_associations_df[constants.WORD].apply(lambda w: nlp(w)[0].pos_)
+    poses = poses / poses.sum()
+    all_associations_df['scaled'] = all_associations_df.apply(lambda row: row[sort_column] * poses[row.pos], axis=1)
+    all_associations_df = all_associations_df.sort_values("scaled", ascending=False)
+    return all_associations_df
 
 
 def predict_from_word_vectors(tokens, word_list, spacy_vocab, nlp, POS="NOUN", top_number=constants.DEFAULT_TOP_NGRAMS):
@@ -259,28 +293,35 @@ def predict_from_word_vectors(tokens, word_list, spacy_vocab, nlp, POS="NOUN", t
     for column in keys:
         r[constants.PRODUCT_SQ_COLUMN_NAME] *= ((r[column]) ** 2)
 
-    top_results = get_top_results(r, nlp, top_number, POS)
+    top_results = get_top_results_filter_pos(r, nlp, top_number, POS)
     return top_results
 
 
-def predict_from_word_vectors_matrix(tokens, matrix, nlp, POS="NOUN", top_number=constants.DEFAULT_TOP_ASSOCIATIONS):
+def predict_from_word_vectors_matrix(tokens, matrix, nlp, pos="NOUN", top_number=constants.DEFAULT_TOP_ASSOCIATIONS,
+                                     pos_pos_map=None):
     """
     Make a prediction based on the word vectors
     :param tokens:
     :param matrix:
     :param nlp:
-    :param POS:
+    :param pos:
     :param top_number:
     :return:
     """
     vector_results = collect_word_vector_associations(tokens, matrix)
-    top_results = get_top_results(vector_results, nlp, top_number, POS)
+    if pos is None and pos_pos_map is not None:
+        doc = nlp(" ".join(tokens))
+        doc_poses = [word.pos_ for word in doc]
+        next_pos_dist = pos_pos_map[f'count_after_{doc_poses[-1]}'].sort_values()
+        top_results = get_top_results_scale_pos(vector_results, nlp, next_pos_dist)
+    else:
+        top_results = get_top_results_filter_pos(vector_results, nlp, top_number, pos)
     return top_results
 
 
 # TODO:  A parameter for max results. ng_result = ngram_matches[i].head(max_results); straightforward enough but will
 #  need some regression
-def predict(phrase, list_of_hists, list_of_prefix_maps, matrix_df, nlp, POS="NOUN", threshold=5):
+def predict(phrase, list_of_hists, list_of_prefix_maps, matrix_df, nlp, pos="NOUN", threshold=5):
     """
     Make a predictino of the next word
     :param phrase: the input words (a sentence fragment) you are trying to predict what will come next
@@ -288,33 +329,181 @@ def predict(phrase, list_of_hists, list_of_prefix_maps, matrix_df, nlp, POS="NOU
     :param list_of_prefix_maps: a list of prefix maps, that map phrases to places in the ngram hist that they appear
     :param matrix_df: word vectors DataFrame
     :param nlp: the spacy object
-    :param POS: the default part of speech that all results should match
+    :param pos: the default part of speech that all results should match
     :param threshold: the minimum threshold for the ngram "backoff" algorithm
     :return: a DataFrame, with a list of words that could match, in order of most likely to least likely
     """
     ngram_matches = collect_n_grams_matches_indices(phrase, list_of_hists, list_of_prefix_maps)
 
-    # TODO: Use the choose_best_n_gram() function.
-    ng_result = None  # Find a way to default it to the overall word frequency
-    for i in [x for x in range(len(ngram_matches))][::-1]:
-        if ngram_matches[i][constants.COUNT_COLUMN_NAME].sum() > threshold:
-            ng_result = ngram_matches[i]#.head(5)
-            break
-
+    ng_result = choose_best_n_gram_backoff(ngram_matches, threshold)
+    # TODO:  Maybe find a way to default it to the overall word frequency if there are ngrams.
     if ng_result is not None:
         result = ng_result[[constants.TARGET]].rename(columns={constants.TARGET: constants.PREDICTION})
         result[constants.RESULT_TYPE] = constants.NGRAM
     else:
         tokens = phrase.split(" ")
         # print(tokens)
-        association_results = predict_from_word_vectors_matrix(tokens, matrix_df, nlp, POS)
+        association_results = predict_from_word_vectors_matrix(tokens, matrix_df, nlp, pos)
         result = association_results[[constants.WORD]].rename(columns={constants.WORD: constants.PREDICTION})
         result[constants.RESULT_TYPE] = constants.VECTOR
     return result
 
 
-def choose_best_n_gram(results_list):
-    pass
+# TODO:  Make a unit test.
+def choose_best_n_gram_backoff(ngram_matches, threshold=constants.DEFAULT_NGRAMS_THRESHOLD):
+    for i in [x for x in range(len(ngram_matches))][::-1]:
+        if ngram_matches[i][constants.COUNT_COLUMN_NAME].sum() > threshold:
+            ng_result = ngram_matches[i]#.head(5)
+            return ng_result
+    return None
+
+
+def exp_predict_2(phrase, list_of_hists, list_of_prefix_maps, matrix_df, nlp, pos_pos_map,
+                  threshold=constants.DEFAULT_NGRAMS_THRESHOLD):
+    # First, get the ngram results
+    ngram_matches = collect_n_grams_matches_indices(phrase, list_of_hists, list_of_prefix_maps)
+    ng_result = choose_best_n_gram_backoff(ngram_matches, threshold)
+
+    # Now word vector results
+    # tokens1 = phrase.split(" ")
+    tokens = bo.tokenize_string(phrase)
+    # association_results1 = predict_from_word_vectors_matrix(tokens1, matrix_df, nlp, pos=None,
+    # pos_pos_map=pos_pos_map)
+    association_results = predict_from_word_vectors_matrix(tokens, matrix_df, nlp, pos=None, pos_pos_map=pos_pos_map)
+    # association_results = association_results[[constants.WORD]].rename(columns={constants.WORD: constants.PREDICTION})
+    association_results = association_results.rename(columns={constants.WORD: constants.PREDICTION})
+    association_results[constants.RESULT_TYPE] = constants.VECTOR
+
+    if ng_result is None:
+        # TODO:  Maybe find a way to default it to the overall word frequency if there are ngrams.
+        print("vectors")
+        print(association_results.iloc[:50])
+        return association_results
+    if ng_result is not None:
+        # ng_result = ng_result[[constants.TARGET]].rename(columns={constants.TARGET: constants.PREDICTION})
+        # ng_result[constants.RESULT_TYPE] = constants.NGRAM
+        # ng_result[constants.POS] = ng_result.target.apply(lambda x: nlp(x)[0].pos_)
+        ng_result["poses"] = ng_result.gram.apply(lambda w: [word.pos_ for word in nlp(w)])
+        ng_result["last_pos"] = ng_result["poses"].apply(lambda w: w[-1])
+
+    #ng_result.merg
+    ngt = ng_result.iloc[:50]
+    wvt = association_results.iloc[:50]
+    combined = ngt.merge(wvt, left_on="target", right_on="prediction")
+    #print("ngrams")
+    #print(ngt.head(50))
+    #print("vectors")
+    #print(wvt.head(50))
+    #print("combined")
+    #print(combined.head(29))
+    return combined
+
+
+def exp_predict_1(phrase, list_of_hists, list_of_prefix_maps, matrix_df, nlp, weighted_pos=True,
+                  threshold=constants.DEFAULT_NGRAMS_THRESHOLD):
+    tokens = bo.tokenize_string(phrase)
+    vector_results = collect_word_vector_associations(tokens, matrix_df)
+    top_number = 25
+    result1 = predict_from_word_vectors_matrix(tokens, matrix_df, nlp, "NOUN", top_number)
+    result2 = predict_from_word_vectors_matrix(tokens, matrix_df, nlp, "VERB", top_number)
+    result3 = predict_from_word_vectors_matrix(tokens, matrix_df, nlp, "ADJ", top_number)
+    ngram_matches = collect_n_grams_matches_indices(phrase, list_of_hists, list_of_prefix_maps)
+
+    # TODO: Use the choose_best_n_gram() function.
+    ng_result = None  # Find a way to default it to the overall word frequency
+    for i in [x for x in range(len(ngram_matches))][::-1]:
+        ngram_matches[i][constants.POS] = ngram_matches[i].target.apply(lambda x: nlp(x)[0].pos_)
+        ngram_matches[i]["poses"] = ngram_matches[i].gram.apply(lambda w: [word.pos_ for word in nlp(w)])
+        ngram_matches[i]["last_pos"] = ngram_matches[i]["poses"].apply(lambda w: w[-1])
+        # ngram_matches[i]["previous_pos"] = ngram_matches[i]["poses"].apply(lambda w: w[-2]) # Should be the same
+        # for all.
+        # Obviously, this won't work if you have less than two words in the phrase.  Then again, you wouldn't be
+        # using ngrams.
+        if ngram_matches[i][constants.COUNT_COLUMN_NAME].sum() > threshold:
+            ng_result = ngram_matches[i]  # .head(5)
+            break
+
+    if ng_result is not None:
+        # previous_pos = ng_result.iloc[0].previous_pos
+        previous_pos = ng_result.iloc[0].poses[-2]
+        top_individual_pos_in_result = ng_result["last_pos"].value_counts(ascending=False).index[0]
+        pos_pos_map = pd.read_csv("moby_pos_pos.csv", index_col=0)
+
+        # Based on previous analysis, rank the likelihood of the last POS given the second to last POS.
+        last_pos_rank = pos_pos_map["count_after_" + previous_pos].sort_values(ascending=False)
+        top_weighted_last_pos_precomputed = last_pos_rank.iloc[0]
+        from_ngram_pos_counts = ng_result[ng_result.last_pos == top_weighted_last_pos_precomputed]
+        from_weighted_stats = ng_result[ng_result.last_pos == top_individual_pos_in_result]
+        # Which of the above two is better?
+        # It's not about precomputed vs runtime so much.
+        # The first is more like the weighted average, but common words like "the" will weight the results toward it.
+        # The second is the count of individual parts of speech, with the part of speech of "harmonious" counting as
+        # much as the part of speech of "the".
+        # Test it.
+        # print(ng_result)
+        if weighted_pos:
+            return from_weighted_stats
+        else:
+            return from_ngram_pos_counts
+    else:
+        most_common_pos = "DET"
+        print("who knows")
+        return None
+
+
+def exp_predict_3(phrase, list_of_hists, list_of_prefix_maps, matrix_df, nlp, ngram_weight=.9,
+                  threshold=constants.DEFAULT_NGRAMS_THRESHOLD):
+    # First, get the ngram results
+    ngram_matches = collect_n_grams_matches_indices(phrase, list_of_hists, list_of_prefix_maps)
+    ng_result = choose_best_n_gram_backoff(ngram_matches, threshold)
+
+    # Now word vector results
+    # tokens1 = phrase.split(" ")
+    tokens = bo.tokenize_string(phrase)
+    # association_results1 = predict_from_word_vectors_matrix(tokens1, matrix_df, nlp, pos=None,
+    # pos_pos_map=pos_pos_map)
+    association_results = predict_from_word_vectors_matrix(tokens, matrix_df, nlp, pos=None)
+    # association_results = association_results[[constants.WORD]].rename(columns={constants.WORD: constants.PREDICTION})
+    association_results = association_results.rename(columns={constants.WORD: constants.PREDICTION})
+    association_results[constants.RESULT_TYPE] = constants.VECTOR
+    association_results[constants.SCORE] = association_results[constants.SUM_SQ_COLUMN_NAME] * (1 - ngram_weight)
+
+    #association_results = association_results.iloc[:10]
+    #association_results['final_sim'] = association_results.apply(lambda row: nlp(phrase).similarity(nlp(
+    #    row.prediction)), axis=1)
+
+    if ng_result is None:
+        # TODO:  Maybe find a way to default it to the overall word frequency if there are ngrams.
+        #print("no ngrams for this one")
+        #print("vectors")
+        #print(association_results.iloc[:50])
+        # association_results['score'] = association_results['sum_sq'] * (1 - ngram_weight)
+        association_results = association_results[[constants.PREDICTION, constants.SUM_SQ_COLUMN_NAME, constants.RESULT_TYPE]]
+        association_results.columns = [constants.PREDICTION, constants.SCORE, constants.RESULT_TYPE]
+        association_results['final_sim'] = association_results.apply(lambda row: nlp(phrase).similarity(nlp(
+           row.prediction)), axis=1)
+        return association_results
+    else:
+        # ng_result["poses"] = ng_result.gram.apply(lambda w: [word.pos_ for word in nlp(w)])
+        # ng_result["last_pos"] = ng_result["poses"].apply(lambda w: w[-1])
+        ng_result[constants.SCORE] = ng_result[constants.COUNT_COLUMN_NAME] / ng_result[
+            constants.COUNT_COLUMN_NAME].sum() * \
+                                     ngram_weight
+        #ng_result['source'] = 'ngrams'
+        ng_result[constants.RESULT_TYPE] = constants.NGRAM
+        #association_results['source'] = 'vector'
+        ng_result = ng_result[[constants.TARGET, 'score', constants.RESULT_TYPE]]
+        ng_result.columns = ['prediction', 'score', constants.RESULT_TYPE]
+        # print(ng_result)
+        association_results = association_results[['prediction', 'score', constants.RESULT_TYPE]]
+        # association_results.columns = ng_result.columns
+        #combined = ng_result.merge(association_results, on="prediction", type="full")
+        combined = ng_result
+        combined = combined.append(association_results)
+        combined = combined.sort_values("score", ascending=False)
+        combined['final_sim'] = combined.apply(lambda row: nlp(phrase).similarity(nlp(
+            row.prediction)), axis=1)
+        return combined
 
 
 def do_predictions():

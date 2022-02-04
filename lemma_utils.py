@@ -73,8 +73,11 @@ def show_info(doc):
               token.lemma_
               )'''
         pass
+    df = get_token_info(doc)
+    print(df)
 
-    print()
+
+def get_token_info(doc):
     texts = [getattr(t, 'text', None) for t in doc]
     lemmas = [t.lemma_ for t in doc] if hasattr(doc[0], 'lemma_') else None
     pos = [getattr(t, 'pos_', None) for t in doc] if hasattr(doc[0], 'pos_') else None
@@ -82,7 +85,7 @@ def show_info(doc):
     morph_dict = [t.morph.to_dict() for t in doc] if hasattr(doc[0], 'morph') else None
     head = [t.head.text for t in doc] if hasattr(doc[0], 'head') else None
     df = pd.DataFrame({'text': texts, 'lemma': lemmas, 'pos': pos, 'dep': dep, 'morph': morph_dict, 'head': head})
-    print(df)
+    return df
 
 
 def search_doc_for_examples(doc, lemma, morphology_attributes):
